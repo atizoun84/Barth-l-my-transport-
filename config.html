@@ -1,0 +1,572 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Barthélémy Transport - Configuration</title>
+    <link rel="manifest" href="manifest.json">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;700&family=Righteous&display=swap" rel="stylesheet">
+    
+    <style>
+        :root {
+            --gozem-green: #00D18B;
+            --gozem-dark: #1A1A1A;
+            --card-bg: rgba(45, 45, 45, 0.9);
+            --text-white: #FFFFFF;
+            --dark-green: #00D18B;
+        }
+
+        body {
+            margin: 0;
+            font-family: 'Inter', sans-serif;
+            background: url('fond.png') no-repeat center center fixed;
+            background-size: cover;
+            color: var(--text-white);
+            overflow-x: hidden;
+        }
+
+        /* Masquage initial de la page pour la sécurité */
+        #main-wrapper {
+            display: none;
+        }
+
+        .overlay {
+            background: rgba(0, 0, 0, 0.7);
+            min-height: 100vh;
+            width: 100%;
+            position: relative;
+        }
+
+        .navbar-custom {
+            background-color: var(--gozem-dark);
+            border-bottom: 2px solid var(--gozem-green);
+            padding: 10px 15px;
+        }
+
+        .burger-icon {
+            font-size: 1.8rem;
+            color: var(--gozem-green);
+            cursor: pointer;
+            border: none;
+            background: none;
+        }
+
+        .sidebar {
+            width: 100%;
+            max-height: 0;
+            position: absolute;
+            top: 72px;
+            left: 0;
+            background: var(--gozem-dark);
+            transition: max-height 0.4s ease-in-out;
+            z-index: 1060;
+            overflow: hidden;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.5);
+            border-bottom: 2px solid var(--gozem-green);
+        }
+
+        .sidebar.active { max-height: 450px; } /* Ajusté pour le lien supplémentaire */
+
+        .nav-link-custom {
+            padding: 15px 25px;
+            color: white;
+            text-decoration: none;
+            display: block;
+            font-size: 1.1rem;
+            border-bottom: 1px solid rgba(255,255,255,0.05);
+            text-align: center;
+        }
+
+        .nav-link-custom:hover {
+            background: var(--gozem-green);
+            color: var(--gozem-dark);
+            font-weight: bold;
+        }
+
+        .stat-card {
+            background: var(--card-bg);
+            border-left: 5px solid var(--gozem-green);
+            border-radius: 12px;
+            padding: 20px;
+            margin-bottom: 15px;
+            backdrop-filter: blur(5px);
+        }
+
+        .btn-main {
+            background-color: var(--gozem-green);
+            color: var(--gozem-dark);
+            font-weight: bold;
+            padding: 15px;
+            border-radius: 10px;
+            border: none;
+            width: 100%;
+            margin-top: 10px;
+        }
+
+        .status-badge {
+            background: rgba(0, 209, 139, 0.2);
+            color: var(--gozem-green);
+            padding: 5px 12px;
+            border-radius: 20px;
+            font-size: 0.8rem;
+        }
+
+        .app-title {
+            font-family: 'Righteous', cursive;
+            font-size: 1.1rem;
+            color: var(--text-white);
+            letter-spacing: 0.5px;
+            text-transform: uppercase;
+            line-height: 1.2;
+        }
+
+        .header-logo {
+            width: 50px;
+            height: auto;
+            margin-right: 10px;
+            border-radius: 5px;
+        }
+
+        .sub-title-header {
+            font-size: 0.75rem;
+            font-family: 'Inter', sans-serif;
+            color: var(--gozem-green);
+            display: block;
+            font-weight: 400;
+        }
+
+        .form-control-custom {
+            background: rgba(255, 255, 255, 0.1);
+            border: 1px solid var(--gozem-green);
+            color: white;
+            border-radius: 8px;
+            padding: 12px;
+        }
+        .form-control-custom:focus {
+            background: rgba(255, 255, 255, 0.15);
+            color: white;
+            box-shadow: 0 0 0 0.25rem rgba(0, 209, 139, 0.25);
+            border-color: var(--gozem-green);
+        }
+
+        .form-control-custom:read-only {
+            background: rgba(0, 209, 139, 0.05);
+            border-color: rgba(0, 209, 139, 0.3);
+            color: var(--gozem-green);
+            font-weight: bold;
+            font-size: 1.1rem;
+        }
+
+        #success-overlay {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(26, 209, 139, 0.9);
+            z-index: 2000;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            backdrop-filter: blur(10px);
+            animation: fadeIn 0.3s ease-in-out;
+        }
+        @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+
+        .table-custom {
+            color: white;
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 8px;
+            overflow: hidden;
+            margin-top: 10px;
+        }
+        .table-custom th { background: rgba(0, 209, 139, 0.2); border: none; color: var(--gozem-green); }
+        .table-custom td { border-bottom: 1px solid rgba(255,255,255,0.1); vertical-align: middle; }
+        
+        #container-liste-localites, #container-liste-collabos { display: block; }
+
+        .btn-del-row {
+            background: #ff4444;
+            border: none;
+            color: white;
+            padding: 2px 8px;
+            border-radius: 5px;
+            font-size: 0.8rem;
+        }
+        
+        .btn-lock-red {
+            background-color: #dc3545 !important;
+            color: white !important;
+        }
+        
+        .disabled-action {
+            opacity: 0.5;
+            pointer-events: none;
+        }
+
+        .code-collab-masked {
+            cursor: pointer;
+            background: rgba(0, 209, 139, 0.1);
+            padding: 2px 6px;
+            border-radius: 4px;
+            letter-spacing: 2px;
+            font-weight: bold;
+        }
+    </style>
+</head>
+<body>
+
+<div id="main-wrapper">
+<div class="overlay">
+    <nav class="navbar-custom d-flex align-items-center justify-content-between">
+        <div class="d-flex align-items-center">
+            <button class="burger-icon" onclick="toggleSidebar()">☰</button>
+            <img src="logo maison.png" alt="Logo" class="header-logo ms-2">
+            <div class="app-title">
+                BARTHÉLÉMY TRANSPORT
+                <span class="sub-title-header">Service des colis confiés • Configuration</span>
+            </div>
+        </div>
+        <div class="text-end">
+            <span class="status-badge d-none d-sm-inline">● Glazoué ↔ Parakou</span>
+        </div>
+    </nav>
+
+    <div class="sidebar" id="sidebar">
+        <nav>
+            <a href="index.html" class="nav-link-custom">🏠 Tableau de bord</a>
+            <a href="reception.html" class="nav-link-custom">📥 Réception Colis</a>
+            <a href="livraison.html" class="nav-link-custom">📤 Livraison (Code)</a>
+            <a href="inventaire.html" class="nav-link-custom">📋 Inventaire</a>
+            <a href="config.html" class="nav-link-custom">⚙️ Configuration</a>
+        </nav>
+    </div>
+
+    <div class="container py-4">
+        <div class="text-center mb-4">
+            <h2 class="fw-bold">Configuration 👋</h2>
+            <p class="text-light">Paramètres de votre service</p>
+        </div>
+
+        <div class="stat-card shadow">
+            <h5 class="mb-3" style="color: var(--gozem-green);">Profil Chauffeur & Sécurité</h5>
+            <div class="mb-3">
+                <label class="form-label small">Nom complet</label>
+                <input type="text" class="form-control form-control-custom lockable" value="Barthélémy" id="user-name" readonly>
+            </div>
+            <div class="mb-3">
+                <label class="form-label small">Numéro WhatsApp</label>
+                <input type="tel" class="form-control form-control-custom lockable" value="0148554250" id="user-tel" readonly>
+            </div>
+            <div class="mb-3">
+                <label class="form-label small">Code de sécurité (Admin)</label>
+                <input type="password" class="form-control form-control-custom lockable" value="1234" id="secure-code" readonly>
+            </div>
+            
+            <hr class="border-secondary">
+            
+            <h5 class="mb-3" style="color: var(--gozem-green);">Trajet & Localités</h5>
+            <div class="mb-3 config-action">
+                <label class="form-label small">Ajouter ville ou village (séparés par virgule)</label>
+                <div class="input-group">
+                    <input type="text" class="form-control form-control-custom" id="loc-input" placeholder="Ex: Glazoué, Savè, Parakou">
+                    <button class="btn btn-success" type="button" id="btn-add-loc" onclick="addLocalite()">AJOUTER</button>
+                </div>
+            </div>
+            
+            <div class="mb-3">
+                <div class="d-flex justify-content-between align-items-center mb-2">
+                    <label class="small">Historique du trajet :</label>
+                    <button class="btn btn-sm btn-outline-info" id="btn-toggle-liste" onclick="toggleListe('container-liste-localites', this)">MASQUER LA LISTE</button>
+                </div>
+                
+                <div id="container-liste-localites">
+                    <div class="table-responsive">
+                        <table class="table table-custom mb-0">
+                            <thead>
+                                <tr>
+                                    <th>Localité</th>
+                                    <th class="text-end">Action</th>
+                                </tr>
+                            </thead>
+                            <tbody id="localites-tbody">
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+            <hr class="border-secondary">
+
+            <h5 class="mb-3" style="color: var(--gozem-green);">Collaborateurs</h5>
+            <div class="config-action">
+                <div class="mb-2">
+                    <input type="text" class="form-control form-control-custom mb-2" id="collab-nom" placeholder="Nom et prénoms">
+                    <input type="tel" class="form-control form-control-custom mb-2" id="collab-tel" placeholder="Numéro WhatsApp">
+                    <input type="text" class="form-control form-control-custom mb-2" id="collab-code" placeholder="Code collabo">
+                    <button class="btn btn-success w-100 fw-bold" type="button" id="btn-add-collab" onclick="addCollabo()">ENREGISTRER COLLABORATEUR</button>
+                </div>
+            </div>
+
+            <div class="mb-3 mt-3">
+                <div class="d-flex justify-content-between align-items-center mb-2">
+                    <label class="small">Liste des collaborateurs :</label>
+                    <button class="btn btn-sm btn-outline-info" id="btn-toggle-collab" onclick="toggleListe('container-liste-collabos', this)">MASQUER LA LISTE</button>
+                </div>
+                
+                <div id="container-liste-collabos">
+                    <div class="table-responsive">
+                        <table class="table table-custom mb-0">
+                            <thead>
+                                <tr>
+                                    <th>Nom / WhatsApp</th>
+                                    <th>Code</th>
+                                    <th class="text-end">Action</th>
+                                </tr>
+                            </thead>
+                            <tbody id="collabos-tbody">
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+            <div class="mt-4">
+                <button class="btn btn-warning w-100 fw-bold shadow" id="btn-lock-toggle" onclick="handleLockToggle()">DÉVERROUILLER 🔓</button>
+            </div>
+        </div>
+    </div>
+</div>
+</div>
+
+<div id="success-overlay" onclick="hideSuccess()">
+    <div class="text-center text-white p-4">
+        <div class="mb-4">
+            <svg xmlns="http://www.w3.org/2000/svg" width="100" height="100" fill="currentColor" class="bi bi-check-circle-fill" viewBox="0 0 16 16">
+              <path d="M16 8A8 8 0 1 1 0 8a8 8 0 0 1 16 0m-3.97-3.03a.75.75 0 0 0-1.08.022L7.477 9.417 5.384 7.323a.75.75 0 0 0-1.06 1.06L6.97 11.03a.75.75 0 0 0 1.079-.02l3.992-4.99a.75.75 0 0 0-.01-1.05z"/>
+            </svg>
+        </div>
+        <h1 class="fw-bold mb-2">SUCCÈS !</h1>
+        <p class="fs-5" id="overlay-msg">Opération réussie.</p>
+    </div>
+</div>
+
+<script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/12.11.0/firebase-app.js";
+    import { getDatabase, ref, set, onValue, push } from "https://www.gstatic.com/firebasejs/12.11.0/firebase-database.js";
+
+    const firebaseConfig = {
+        apiKey: "AIzaSyDIOT3eym4lqX0wPNKIFwwuKGzjlofyaPM",
+        authDomain: "barthelemy-transport.firebaseapp.com",
+        databaseURL: "https://barthelemy-transport-default-rtdb.europe-west1.firebasedatabase.app/",
+        projectId: "barthelemy-transport",
+        storageBucket: "barthelemy-transport.firebasestorage.app",
+        messagingSenderId: "430598535240",
+        appId: "1:430598535240:web:6261039803e0ae7be4407d"
+    };
+
+    const app = initializeApp(firebaseConfig);
+    const db = getDatabase(app);
+
+    // --- LOGIQUE CLOUD-FIRST POUR CONFIGURATION ---
+
+    // 1. Sync Profil
+    const profileRef = ref(db, 'config/profile');
+    onValue(profileRef, (snapshot) => {
+        const data = snapshot.val();
+        if(data) {
+            localStorage.setItem('bt_profile', JSON.stringify(data));
+            document.getElementById('user-name').value = data.name || "Barthélémy";
+            document.getElementById('user-tel').value = data.tel || "0148554250";
+            document.getElementById('secure-code').value = data.code || "1234";
+        }
+    });
+
+    // 2. Sync Localités
+    const locRef = ref(db, 'config/localites');
+    onValue(locRef, (snapshot) => {
+        const list = snapshot.val() || [];
+        localStorage.setItem('bt_localites', JSON.stringify(list));
+        loadLocalites();
+    });
+
+    // 3. Sync Collaborateurs
+    const collRef = ref(db, 'config/collabos');
+    onValue(collRef, (snapshot) => {
+        const list = snapshot.val() || [];
+        localStorage.setItem('bt_collabos', JSON.stringify(list));
+        loadCollabos();
+    });
+
+    // Exportation des fonctions de sauvegarde vers le window pour les scripts classiques
+    window.saveProfileToCloud = (data) => set(ref(db, 'config/profile'), data);
+    window.saveLocalitesToCloud = (data) => set(ref(db, 'config/localites'), data);
+    window.saveCollabosToCloud = (data) => set(ref(db, 'config/collabos'), data);
+</script>
+
+<script>
+    let isLocked = true;
+
+    document.addEventListener('DOMContentLoaded', () => {
+        checkAdminAccess();
+    });
+
+    function checkAdminAccess() {
+        const profile = JSON.parse(localStorage.getItem('bt_profile') || '{"code":"1234"}');
+        const entry = prompt("Accès Restreint : Saisissez le code ADMIN pour accéder à la configuration :");
+        
+        if (entry === profile.code) {
+            document.getElementById('main-wrapper').style.display = 'block';
+            loadLocalites();
+            loadCollabos();
+            applyLockState();
+        } else {
+            alert("⚠️ Accès refusé. Code incorrect.");
+            window.location.href = "index.html";
+        }
+    }
+
+    function toggleSidebar() {
+        document.getElementById('sidebar').classList.toggle('active');
+    }
+
+    function showSuccess(msg = "Opération réussie.", temp = false) {
+        document.getElementById('overlay-msg').innerText = msg;
+        document.getElementById('success-overlay').style.display = 'flex';
+        if(temp) setTimeout(hideSuccess, 1500);
+    }
+
+    function hideSuccess() {
+        document.getElementById('success-overlay').style.display = 'none';
+    }
+
+    function applyLockState() {
+        const lockables = document.querySelectorAll('.lockable');
+        const actions = document.querySelectorAll('.config-action, .btn-del-row, #btn-add-loc, #btn-add-collab');
+        const btnToggle = document.getElementById('btn-lock-toggle');
+
+        if (isLocked) {
+            lockables.forEach(el => el.readOnly = true);
+            actions.forEach(el => el.classList.add('disabled-action'));
+            btnToggle.innerText = "DÉVERROUILLER 🔓";
+            btnToggle.className = "btn btn-warning w-100 fw-bold shadow";
+        } else {
+            lockables.forEach(el => el.readOnly = false);
+            actions.forEach(el => el.classList.remove('disabled-action'));
+            btnToggle.innerText = "VERROUILLER & ENREGISTRER 🔒";
+            btnToggle.className = "btn btn-danger btn-lock-red w-100 fw-bold shadow";
+        }
+    }
+
+    function handleLockToggle() {
+        const profile = JSON.parse(localStorage.getItem('bt_profile') || '{"code":"1234"}');
+        if (isLocked) {
+            const entry = prompt("Veuillez saisir le code ADMIN pour modifier :");
+            if (entry === profile.code) {
+                isLocked = false;
+                applyLockState();
+            } else if (entry !== null) alert("Code incorrect !");
+        } else {
+            const data = {
+                name: document.getElementById('user-name').value,
+                tel: document.getElementById('user-tel').value,
+                code: document.getElementById('secure-code').value
+            };
+            if(window.saveProfileToCloud) window.saveProfileToCloud(data);
+            isLocked = true;
+            applyLockState();
+            showSuccess("Paramètres enregistrés sur le Cloud.");
+        }
+    }
+
+    function addLocalite() {
+        if (isLocked) return;
+        const input = document.getElementById('loc-input');
+        const vals = input.value.split(',');
+        let list = JSON.parse(localStorage.getItem('bt_localites') || "[]");
+        
+        vals.forEach(v => {
+            const trimmed = v.trim();
+            if (trimmed && !list.includes(trimmed)) list.push(trimmed);
+        });
+        
+        if(window.saveLocalitesToCloud) window.saveLocalitesToCloud(list);
+        input.value = '';
+        showSuccess("Localité(s) synchronisée(s) !", true);
+    }
+
+    function loadLocalites() {
+        const tbody = document.getElementById('localites-tbody');
+        const list = JSON.parse(localStorage.getItem('bt_localites') || "[]");
+        tbody.innerHTML = '';
+        list.forEach((loc, index) => {
+            const row = tbody.insertRow();
+            row.innerHTML = `<td>${loc}</td><td class="text-end"><button class="btn-del-row ${isLocked ? 'disabled-action' : ''}" onclick="deleteItem('bt_localites', ${index}, 'cette localité')">Supprimer</button></td>`;
+        });
+    }
+
+    function addCollabo() {
+        if (isLocked) return;
+        const nom = document.getElementById('collab-nom').value.trim();
+        const tel = document.getElementById('collab-tel').value.trim();
+        const code = document.getElementById('collab-code').value.trim();
+        if (!nom || !tel || !code) return alert("Champs vides !");
+
+        let list = JSON.parse(localStorage.getItem('bt_collabos') || "[]");
+        list.push({ nom, tel, code });
+        if(window.saveCollabosToCloud) window.saveCollabosToCloud(list);
+        
+        document.getElementById('collab-nom').value = '';
+        document.getElementById('collab-tel').value = '';
+        document.getElementById('collab-code').value = '';
+        showSuccess("Collaborateur synchronisé !", true);
+    }
+
+    function loadCollabos() {
+        const tbody = document.getElementById('collabos-tbody');
+        const list = JSON.parse(localStorage.getItem('bt_collabos') || "[]");
+        tbody.innerHTML = '';
+        list.forEach((c, index) => {
+            const row = tbody.insertRow();
+            row.innerHTML = `<td><strong>${c.nom}</strong><br><small>${c.tel}</small></td><td><span class="code-collab-masked" onclick="revealCode(${index}, this)">••••••</span></td><td class="text-end"><button class="btn-del-row ${isLocked ? 'disabled-action' : ''}" onclick="deleteItem('bt_collabos', ${index}, 'ce collaborateur')">Supprimer</button></td>`;
+        });
+    }
+
+    function revealCode(index, element) {
+        const profile = JSON.parse(localStorage.getItem('bt_profile') || '{"code":"1234"}');
+        const entry = prompt("Code ADMIN requis :");
+        if (entry === profile.code) {
+            const list = JSON.parse(localStorage.getItem('bt_collabos') || "[]");
+            element.innerText = list[index].code;
+            element.style.letterSpacing = "normal";
+            setTimeout(() => { element.innerText = "••••••"; element.style.letterSpacing = "2px"; }, 5000);
+        }
+    }
+
+    function deleteItem(key, index, label) {
+        if (isLocked) return;
+        const profile = JSON.parse(localStorage.getItem('bt_profile') || '{"code":"1234"}');
+        if (prompt(`Confirmez suppression ${label} (Code ADMIN) :`) === profile.code) {
+            let list = JSON.parse(localStorage.getItem(key) || "[]");
+            list.splice(index, 1);
+            if(key === 'bt_localites' && window.saveLocalitesToCloud) window.saveLocalitesToCloud(list);
+            if(key === 'bt_collabos' && window.saveCollabosToCloud) window.saveCollabosToCloud(list);
+        }
+    }
+
+    function toggleListe(id, btn) {
+        const container = document.getElementById(id);
+        const isHidden = container.style.display === 'none';
+        container.style.display = isHidden ? 'block' : 'none';
+        btn.innerText = isHidden ? 'MASQUER LA LISTE' : 'AFFICHER LA LISTE';
+    }
+
+    document.querySelector('.container').addEventListener('click', () => {
+        document.getElementById('sidebar').classList.remove('active');
+    });
+</script>
+
+</body>
+</html>

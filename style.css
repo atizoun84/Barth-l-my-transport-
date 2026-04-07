@@ -1,0 +1,185 @@
+/* FICHIER : style.css
+   PROJET : Barthélémy Transport PWA
+   THÈME : Gozem Classic (Noir & Vert)
+*/
+
+:root {
+    --gozem-green: #00D18B;
+    --gozem-dark: #1A1A1A;
+    --gozem-grey: #2D2D2D;
+    --text-white: #FFFFFF;
+    --text-muted: #B0B0B0;
+    --error-red: #FF4D4D;
+    --transition-speed: 0.4s;
+}
+
+/* --- BASE & FOND D'ÉCRAN --- */
+* {
+    box-sizing: border-box;
+}
+
+body {
+    margin: 0;
+    padding: 0;
+    font-family: 'Inter', sans-serif;
+    /* L'image de fond s'applique à tout le corps du métier */
+    background: url('fond.png') no-repeat center center fixed;
+    background-size: cover;
+    color: var(--text-white);
+    min-height: 100vh;
+    overflow-x: hidden;
+}
+
+/* Voile sombre pour garantir la lisibilité du texte sur fond.png */
+.overlay {
+    background: rgba(0, 0, 0, 0.75);
+    min-height: 100vh;
+    width: 100%;
+    position: relative;
+}
+
+/* --- HEADER & NAVIGATION --- */
+.navbar-custom {
+    background-color: var(--gozem-dark);
+    border-bottom: 2px solid var(--gozem-green);
+    padding: 10px 15px;
+    position: sticky;
+    top: 0;
+    z-index: 1100;
+}
+
+.app-title {
+    font-family: 'Righteous', cursive;
+    font-size: 1.1rem;
+    color: var(--text-white);
+    letter-spacing: 1px;
+    text-transform: uppercase;
+    margin-left: 10px;
+}
+
+.header-logo {
+    width: 45px;
+    height: auto;
+    border-radius: 8px;
+    border: 1px solid rgba(255,255,255,0.2);
+}
+
+.burger-icon {
+    font-size: 1.8rem;
+    color: var(--gozem-green);
+    cursor: pointer;
+    border: none;
+    background: none;
+    padding: 0;
+}
+
+/* --- MENU VERTICAL RÉTRACTABLE --- */
+.sidebar {
+    width: 100%;
+    max-height: 0;
+    position: fixed; /* Fixé sous le header */
+    top: 67px; 
+    left: 0;
+    background: var(--gozem-dark);
+    transition: max-height var(--transition-speed) ease-in-out;
+    z-index: 1090;
+    overflow: hidden;
+    box-shadow: 0 10px 20px rgba(0,0,0,0.6);
+    border-bottom: 3px solid var(--gozem-green);
+}
+
+.sidebar.active {
+    max-height: 500px; /* Ajuster selon le nombre de liens */
+}
+
+.nav-link-custom {
+    padding: 18px 25px;
+    color: var(--text-white);
+    text-decoration: none;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.1rem;
+    border-bottom: 1px solid rgba(255,255,255,0.05);
+    transition: 0.2s;
+}
+
+.nav-link-custom:hover {
+    background: var(--gozem-green);
+    color: var(--gozem-dark);
+    font-weight: bold;
+}
+
+/* --- COMPOSANTS INTERFACE (CARDS & BOUTONS) --- */
+.stat-card {
+    background: rgba(45, 45, 45, 0.85);
+    border-left: 5px solid var(--gozem-green);
+    border-radius: 12px;
+    padding: 20px;
+    margin-bottom: 15px;
+    backdrop-filter: blur(8px); /* Effet de flou sur le fond.png */
+    box-shadow: 0 4px 15px rgba(0,0,0,0.3);
+}
+
+.btn-main {
+    background-color: var(--gozem-green);
+    color: var(--gozem-dark);
+    font-weight: 700;
+    padding: 15px;
+    border-radius: 12px;
+    border: none;
+    width: 100%;
+    text-transform: uppercase;
+    transition: transform 0.1s active;
+}
+
+.btn-main:active {
+    transform: scale(0.98);
+}
+
+.btn-secondary-custom {
+    background-color: var(--text-white);
+    color: var(--gozem-dark);
+}
+
+.status-badge {
+    background: rgba(0, 209, 139, 0.15);
+    color: var(--gozem-green);
+    padding: 6px 12px;
+    border-radius: 20px;
+    font-size: 0.75rem;
+    font-weight: bold;
+    border: 1px solid var(--gozem-green);
+}
+
+/* --- FORMULAIRES (Réception / Config) --- */
+.form-control {
+    background: var(--gozem-grey);
+    border: 1px solid rgba(255,255,255,0.1);
+    color: white;
+    padding: 12px;
+    border-radius: 8px;
+}
+
+.form-control:focus {
+    background: var(--gozem-grey);
+    border-color: var(--gozem-green);
+    color: white;
+    box-shadow: 0 0 0 0.25rem rgba(0, 209, 139, 0.25);
+}
+
+.form-label {
+    color: var(--gozem-green);
+    font-weight: bold;
+    margin-bottom: 5px;
+}
+
+/* --- ANIMATIONS --- */
+@keyframes fadeIn {
+    from { opacity: 0; transform: translateY(10px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+.container {
+    animation: fadeIn 0.5s ease-out;
+}

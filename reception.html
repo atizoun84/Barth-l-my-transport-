@@ -1,0 +1,561 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Barthélémy Transport - Réception Colis</title>
+    <link rel="manifest" href="manifest.json">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;700&family=Righteous&display=swap" rel="stylesheet">
+    
+    <style>
+        :root {
+            --gozem-green: #00D18B;
+            --gozem-dark: #1A1A1A;
+            --card-bg: rgba(45, 45, 45, 0.9);
+            --text-white: #FFFFFF;
+            --border-light: rgba(255, 255, 255, 0.1);
+        }
+
+        body {
+            margin: 0;
+            font-family: 'Inter', sans-serif;
+            background: url('fond.png') no-repeat center center fixed;
+            background-size: cover;
+            color: var(--text-white);
+            overflow-x: hidden;
+        }
+
+        .overlay-bg {
+            background: rgba(0, 0, 0, 0.75);
+            min-height: 100vh;
+            width: 100%;
+        }
+
+        /* --- Header & Sidebar (Héritage) --- */
+        .navbar-custom {
+            background-color: var(--gozem-dark);
+            border-bottom: 2px solid var(--gozem-green);
+            padding: 10px 15px;
+        }
+
+        .burger-icon {
+            font-size: 1.8rem;
+            color: var(--gozem-green);
+            cursor: pointer;
+            border: none;
+            background: none;
+        }
+
+        .sidebar {
+            width: 100%;
+            max-height: 0;
+            position: absolute;
+            top: 72px;
+            left: 0;
+            background: var(--gozem-dark);
+            transition: max-height 0.4s ease-in-out;
+            z-index: 1060;
+            overflow: hidden;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.5);
+            border-bottom: 2px solid var(--gozem-green);
+        }
+
+        .sidebar.active { max-height: 450px; }
+
+        .nav-link-custom {
+            padding: 15px 25px;
+            color: white;
+            text-decoration: none;
+            display: block;
+            font-size: 1.1rem;
+            border-bottom: 1px solid var(--border-light);
+            text-align: center;
+        }
+
+        .nav-link-custom:hover { background: var(--gozem-green); color: var(--gozem-dark); font-weight: bold; }
+
+        .app-title {
+            font-family: 'Righteous', cursive;
+            font-size: 1.1rem;
+            color: var(--text-white);
+            text-transform: uppercase;
+        }
+
+        .sub-title-header { font-size: 0.75rem; color: var(--gozem-green); display: block; font-weight: 400; }
+
+        .header-logo { width: 50px; height: auto; border-radius: 5px; }
+
+        /* --- Formulaire & Cartes --- */
+        .stat-card {
+            background: var(--card-bg);
+            border-left: 5px solid var(--gozem-green);
+            border-radius: 12px;
+            padding: 20px;
+            margin-bottom: 20px;
+            backdrop-filter: blur(8px);
+        }
+
+        .form-control-custom {
+            background: rgba(255, 255, 255, 0.08);
+            border: 1px solid rgba(0, 209, 139, 0.4);
+            color: white;
+            border-radius: 8px;
+            padding: 12px;
+        }
+
+        .form-control-custom::placeholder {
+            color: rgba(255, 255, 255, 0.3);
+            font-style: italic;
+        }
+
+        .form-control-custom:focus {
+            background: rgba(255, 255, 255, 0.12);
+            color: white;
+            border-color: var(--gozem-green);
+            box-shadow: 0 0 0 0.25rem rgba(0, 209, 139, 0.2);
+        }
+
+        .btn-save {
+            background-color: var(--gozem-green);
+            color: var(--gozem-dark);
+            font-weight: 800;
+            padding: 15px;
+            border-radius: 10px;
+            border: none;
+            width: 100%;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        /* --- Liste Dynamique --- */
+        .colis-item {
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 10px;
+            padding: 12px;
+            margin-bottom: 10px;
+            border: 1px solid var(--border-light);
+            position: relative;
+            cursor: pointer;
+            transition: 0.2s;
+        }
+        .colis-item:active { transform: scale(0.98); background: rgba(255, 255, 255, 0.1); }
+
+        .colis-id { color: var(--gozem-green); font-weight: bold; font-family: monospace; }
+
+        .btn-delete-colis {
+            background: rgba(220, 53, 69, 0.2);
+            color: #ff4444;
+            border: 1px solid #ff4444;
+            font-size: 0.65rem;
+            padding: 2px 6px;
+            border-radius: 4px;
+            cursor: pointer;
+            transition: 0.3s;
+        }
+        .btn-delete-colis:hover { background: #ff4444; color: white; }
+
+        /* --- UI Components --- */
+        #success-overlay {
+            display: none;
+            position: fixed;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0, 209, 139, 0.95);
+            z-index: 3000;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            backdrop-filter: blur(10px);
+        }
+
+        #success-code-display {
+            cursor: pointer;
+            background: rgba(0,0,0,0.1);
+            padding: 10px;
+            border-radius: 8px;
+            border: 1px dashed black;
+        }
+
+        #temp-success-overlay {
+            display: none;
+            position: fixed;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0, 0, 0, 0.6);
+            z-index: 4000;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            backdrop-filter: blur(5px);
+            animation: fadeIn 0.3s ease;
+        }
+
+        @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+
+        .badge-dest { background: rgba(0, 209, 139, 0.15); color: var(--gozem-green); font-size: 0.75rem; padding: 4px 8px; border-radius: 5px; }
+
+        .footer-mention { font-size: 0.7rem; color: rgba(255,255,255,0.4); text-align: center; margin-top: 30px; padding-bottom: 20px; }
+    </style>
+</head>
+<body>
+
+<div class="overlay-bg">
+    <nav class="navbar-custom d-flex align-items-center justify-content-between">
+        <div class="d-flex align-items-center">
+            <button class="burger-icon" onclick="toggleSidebar()">☰</button>
+            <img src="logo maison.png" alt="Logo" class="header-logo ms-2">
+            <div class="app-title ms-2">
+                BARTHÉLÉMY TRANSPORT
+                <span class="sub-title-header">Service des colis • Réception</span>
+            </div>
+        </div>
+    </nav>
+
+    <div class="sidebar" id="sidebar">
+        <nav>
+            <a href="index.html" class="nav-link-custom">🏠 Tableau de bord</a>
+            <a href="reception.html" class="nav-link-custom">📥 Réception Colis</a>
+            <a href="livraison.html" class="nav-link-custom">📤 Livraison (Code)</a>
+            <a href="inventaire.html" class="nav-link-custom">📋 Inventaire des colis</a>
+            <a href="config.html" class="nav-link-custom">⚙️ Configuration</a>
+        </nav>
+    </div>
+
+    <div class="container py-4">
+        <div class="text-center mb-4">
+            <h2 class="fw-bold">Nouveau Colis 📦</h2>
+            <p class="small text-light">Enregistrez les informations de l'expéditeur et du destinataire</p>
+        </div>
+
+        <div class="stat-card shadow">
+            <form id="reception-form">
+                <div class="row g-3">
+                    <div class="col-6">
+                        <label class="form-label small">Départ</label>
+                        <select id="exp-ville" class="form-select form-control-custom" required>
+                            <option value="">Ville...</option>
+                        </select>
+                    </div>
+                    <div class="col-6">
+                        <label class="form-label small">Destination</label>
+                        <select id="dest-ville" class="form-select form-control-custom" required>
+                            <option value="">Ville...</option>
+                        </select>
+                    </div>
+                    <div class="col-12">
+                        <label class="form-label small">Expéditeur (Nom & Prénoms)</label>
+                        <input type="text" id="exp-nom" class="form-control form-control-custom" placeholder="Ex: AHOLOU Amoussou" required>
+                    </div>
+                    <div class="col-12">
+                        <label class="form-label small">Téléphone Expéditeur</label>
+                        <input type="tel" id="exp-tel" class="form-control form-control-custom" placeholder="01XXXXXXXX" required>
+                    </div>
+                    <hr class="border-secondary my-3">
+                    <div class="col-12">
+                        <label class="form-label small">Destinataire (Nom & Prénoms)</label>
+                        <input type="text" id="dest-nom" class="form-control form-control-custom" placeholder="Ex: Marie Sossa" required>
+                    </div>
+                    <div class="col-12">
+                        <label class="form-label small">Téléphone Dest.</label>
+                        <input type="tel" id="dest-tel" class="form-control form-control-custom" placeholder="Téléphone" required>
+                    </div>
+                    <div class="col-8">
+                        <label class="form-label small">Nature du colis / Description</label>
+                        <textarea id="colis-desc" class="form-control form-control-custom" rows="2" placeholder="Ex: Sac de maïs..."></textarea>
+                    </div>
+                    <div class="col-4">
+                        <label class="form-label small">Nombre d'emballages</label>
+                        <input type="number" id="nb-emballage" class="form-control form-control-custom" value="1" min="1" required>
+                    </div>
+                    <div class="col-12">
+                        <label class="form-label small">Frais de transport (FCFA)</label>
+                        <input type="number" id="colis-prix" class="form-control form-control-custom" placeholder="Ex: 2000" required>
+                    </div>
+                    <div class="col-12 mt-4">
+                        <button type="submit" class="btn-save shadow">Enregistrer le Colis</button>
+                    </div>
+                </div>
+            </form>
+        </div>
+
+        <div class="d-flex justify-content-between align-items-center mb-3 mt-4">
+            <h6 class="mb-0 fw-bold"><span style="color:var(--gozem-green)">●</span> RÉCENTS (Aujourd'hui)</h6>
+            <button class="btn btn-sm btn-outline-light border-0" onclick="toggleJournal()">Afficher/Masquer</button>
+        </div>
+        
+        <div id="journal-container" style="display: block;">
+            <div id="liste-reception">
+                <p class="text-center small text-secondary py-3">Chargement...</p>
+            </div>
+        </div>
+
+        <div class="footer-mention">
+            BARTHÉLÉMY TRANSPORT • Système Sécurisé de Gestion de Colis<br>
+            Version PWA 2.0 • 2026
+        </div>
+    </div>
+</div>
+
+<div id="success-overlay">
+    <div class="text-center text-dark px-3" style="max-width: 400px;">
+        <div class="mb-3">
+            <svg xmlns="http://www.w3.org/2000/svg" width="60" height="60" fill="currentColor" viewBox="0 0 16 16">
+                <path d="M16 8A8 8 0 1 1 0 8a8 8 0 0 1 16 0m-3.97-3.03a.75.75 0 0 0-1.08.022L7.477 9.417 5.384 7.323a.75.75 0 0 0-1.06 1.06L6.97 11.03a.75.75 0 0 0 1.079-.02l3.992-4.99a.75.75 0 0 0-.01-1.05z"/>
+            </svg>
+        </div>
+        <h4 class="fw-bold mb-1">COLIS ENREGISTRÉ !</h4>
+        
+        <div class="bg-light p-3 rounded mb-3 border">
+            <p class="small mb-1 text-secondary">🏷️ CODE ÉTIQUETTE (À écrire sur les <span id="label-count">1</span> colis)</p>
+            <div id="success-label-display" class="fs-3 fw-bold text-primary mb-2">---</div>
+            <p class="small mb-1 text-secondary">🔐 CODE DE RETRAIT (Confidentiel)</p>
+            <div id="success-code-display" class="fs-5 fw-bold" onclick="copyCode()" style="cursor:pointer">----</div>
+        </div>
+        
+        <div class="d-grid gap-2">
+            <button class="btn btn-success fw-bold py-3" onclick="shareWhatsApp()">
+                PARTAGER SUR WHATSAPP 📱
+            </button>
+            <button class="btn btn-dark fw-bold py-2" onclick="hideSuccess()">FERMER</button>
+        </div>
+    </div>
+</div>
+
+<div id="temp-success-overlay">
+    <div class="text-center">
+        <div class="mb-3" style="color: var(--gozem-green);">
+            <svg xmlns="http://www.w3.org/2000/svg" width="100" height="100" fill="currentColor" viewBox="0 0 16 16">
+                <path d="M16 8A8 8 0 1 1 0 8a8 8 0 0 1 16 0m-3.97-3.03a.75.75 0 0 0-1.08.022L7.477 9.417 5.384 7.323a.75.75 0 0 0-1.06 1.06L6.97 11.03a.75.75 0 0 0 1.079-.02l3.992-4.99a.75.75 0 0 0-.01-1.05z"/>
+            </svg>
+        </div>
+        <h2 class="fw-bold text-white">COLIS SUPPRIMÉ !</h2>
+    </div>
+</div>
+
+<script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/12.11.0/firebase-app.js";
+    import { getDatabase, ref, set, onValue, push, remove } from "https://www.gstatic.com/firebasejs/12.11.0/firebase-database.js";
+
+    const firebaseConfig = {
+        apiKey: "AIzaSyDIOT3eym4lqX0wPNKIFwwuKGzjlofyaPM",
+        authDomain: "barthelemy-transport.firebaseapp.com",
+        databaseURL: "https://barthelemy-transport-default-rtdb.europe-west1.firebasedatabase.app/",
+        projectId: "barthelemy-transport",
+        storageBucket: "barthelemy-transport.firebasestorage.app",
+        messagingSenderId: "430598535240",
+        appId: "1:430598535240:web:6261039803e0ae7be4407d"
+    };
+
+    const app = initializeApp(firebaseConfig);
+    const db = getDatabase(app);
+
+    const colisRef = ref(db, 'colis');
+    onValue(colisRef, (snapshot) => {
+        const data = snapshot.val();
+        // Transformation de l'objet Firebase en tableau avec préservation de la clé
+        const list = data ? Object.keys(data).map(key => ({...data[key], firebaseId: key})) : [];
+        // Tri par date inverse pour l'affichage des récents
+        list.reverse();
+        db_colis = list;
+        localStorage.setItem('bt_colis_data', JSON.stringify(list));
+        
+        if (typeof renderAll === "function") renderAll();
+    });
+
+    window.saveColisToCloud = function(colisData) {
+        const newColisRef = push(ref(db, 'colis'));
+        return set(newColisRef, colisData);
+    };
+
+    window.deleteColisFromCloud = function(firebaseId) {
+        return remove(ref(db, `colis/${firebaseId}`));
+    };
+</script>
+
+<script>
+    let db_colis = [];
+    let currentCode = "";
+    let currentColis = null;
+    const form = document.getElementById('reception-form');
+
+    document.addEventListener('DOMContentLoaded', () => {
+        const data = localStorage.getItem('bt_colis_data');
+        db_colis = data ? JSON.parse(data) : [];
+        loadVilles();
+        renderAll();
+    });
+
+    function toggleSidebar() {
+        document.getElementById('sidebar').classList.toggle('active');
+    }
+
+    function toggleJournal() {
+        const container = document.getElementById('journal-container');
+        container.style.display = (container.style.display === 'none') ? 'block' : 'none';
+    }
+
+    function loadVilles() {
+        const selectExp = document.getElementById('exp-ville');
+        const selectDest = document.getElementById('dest-ville');
+        const villes = JSON.parse(localStorage.getItem('bt_localites') || '["Parakou", "Glazoué", "Savè", "Dassa"]');
+        
+        villes.forEach(v => {
+            let opt1 = document.createElement('option');
+            opt1.value = v; opt1.innerText = v;
+            selectExp.appendChild(opt1);
+            let opt2 = document.createElement('option');
+            opt2.value = v; opt2.innerText = v;
+            selectDest.appendChild(opt2);
+        });
+    }
+
+    function generateAlphanumericCode(length = 6) {
+        const chars = '0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ';
+        let result = '';
+        for (let i = 0; i < length; i++) {
+            result += chars.charAt(Math.floor(Math.random() * chars.length));
+        }
+        return result;
+    }
+
+    function generateUniqueLabel() {
+        const timestamp = Date.now().toString();
+        const suffix = Math.floor(Math.random() * 100).toString().padStart(2, '0');
+        return "T" + timestamp.slice(-4) + suffix; 
+    }
+
+    form.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        try {
+            const codeRetrait = generateAlphanumericCode(6);
+            const codeEtiquette = generateUniqueLabel();
+            const nbEmballages = document.getElementById('nb-emballage').value;
+            currentCode = codeRetrait;
+            
+            const nouveauColis = {
+                id: "BT-" + Date.now().toString().slice(-6),
+                date: new Date().toLocaleDateString('fr-FR'),
+                exp: { 
+                    nom: document.getElementById('exp-nom').value, 
+                    tel: document.getElementById('exp-tel').value,
+                    ville: document.getElementById('exp-ville').value 
+                },
+                dest: { 
+                    nom: document.getElementById('dest-nom').value, 
+                    tel: document.getElementById('dest-tel').value, 
+                    ville: document.getElementById('dest-ville').value 
+                },
+                desc: document.getElementById('colis-desc').value,
+                prix: document.getElementById('colis-prix').value,
+                nb: nbEmballages,
+                code: codeRetrait,
+                etiquette: codeEtiquette,
+                statut: "En attente"
+            };
+
+            currentColis = nouveauColis;
+            
+            // Sauvegarde Cloud-First
+            if(typeof saveColisToCloud === "function") {
+                await saveColisToCloud(nouveauColis);
+            }
+
+            showSuccess(codeRetrait, codeEtiquette, nbEmballages);
+            form.reset();
+        } catch (err) {
+            console.error(err);
+            alert("Erreur lors de l'enregistrement cloud.");
+        }
+    });
+
+    function renderAll() {
+        const container = document.getElementById('liste-reception');
+        if (!db_colis || db_colis.length === 0) {
+            container.innerHTML = `<p class="text-center small text-secondary py-3">Aucun colis enregistré.</p>`;
+            return;
+        }
+
+        container.innerHTML = db_colis.slice(0, 5).map((c) => `
+            <div class="colis-item" onclick="afficherCodeDepuisListe('${c.id}')">
+                <div class="d-flex justify-content-between align-items-start">
+                    <div>
+                        <span class="colis-id">${c.id}</span> <span class="badge bg-primary ms-1" style="font-size:0.6rem">🏷️ ${c.etiquette}</span>
+                        <div class="small fw-bold mt-1">${c.dest.nom} (${c.nb} pces)</div>
+                        <div class="small text-info italic" style="font-size:0.75rem">${c.desc || 'Sans description'}</div>
+                        <div class="small text-secondary">De: ${c.exp.ville || '-'} Pour: ${c.dest.ville}</div>
+                    </div>
+                    <div class="text-end">
+                        <span class="badge-dest">${c.dest.ville}</span>
+                        <div class="small mt-2 fw-bold text-success">${c.prix} FCFA</div>
+                        <button class="btn-delete-colis mt-2" onclick="event.stopPropagation(); deleteColis('${c.firebaseId}')">Supprimer</button>
+                    </div>
+                </div>
+            </div>
+        `).join('');
+    }
+
+    function afficherCodeDepuisListe(id) {
+        const colis = db_colis.find(c => c.id === id);
+        if (colis) {
+            currentColis = colis;
+            currentCode = colis.code;
+            showSuccess(colis.code, colis.etiquette, colis.nb);
+            copyCode();
+        }
+    }
+
+    async function deleteColis(firebaseId) {
+        const profile = JSON.parse(localStorage.getItem('bt_profile') || '{"code":"1234"}');
+        const entry = prompt("Saisissez le code ADMIN pour supprimer :");
+        if (entry === profile.code) {
+            if(typeof deleteColisFromCloud === "function") {
+                await deleteColisFromCloud(firebaseId);
+                const tempOverlay = document.getElementById('temp-success-overlay');
+                tempOverlay.style.display = 'flex';
+                setTimeout(() => { tempOverlay.style.display = 'none'; }, 1500);
+            }
+        } else if (entry !== null) alert("Code ADMIN incorrect !");
+    }
+
+    function showSuccess(code, etiquette, nb) {
+        document.getElementById('success-code-display').innerText = code;
+        document.getElementById('success-label-display').innerText = etiquette;
+        document.getElementById('label-count').innerText = nb;
+        document.getElementById('success-overlay').style.display = 'flex';
+        if ("vibrate" in navigator) navigator.vibrate(200);
+    }
+
+    function hideSuccess() {
+        document.getElementById('success-overlay').style.display = 'none';
+    }
+
+    function copyCode() {
+        navigator.clipboard.writeText(currentCode).then(() => { 
+            const display = document.getElementById('success-code-display');
+            display.style.backgroundColor = "rgba(0, 209, 139, 0.2)";
+            setTimeout(() => { display.style.backgroundColor = "rgba(0,0,0,0.1)"; }, 500);
+        });
+    }
+
+    function shareWhatsApp() {
+        if (!currentColis) return;
+        const message = `📦 *BARTHÉLÉMY TRANSPORT*\n\n` +
+                        `Bonjour *${currentColis.dest.nom}*,\n` +
+                        `Un envoi de *${currentColis.nb} emballage(s)* vous a été expédié de *${currentColis.exp.ville || 'notre agence'}*.\n\n` +
+                        `🏷️ *ÉTIQUETTE SUR COLIS:* ${currentColis.etiquette}\n` +
+                        `🔹 *Destination:* ${currentColis.dest.ville}\n` +
+                        `🔐 *CODE DE RETRAIT:* ${currentColis.code}\n\n` +
+                        `Veuillez présenter ce code pour le retrait. Merci !`;
+        window.open(`https://wa.me/${currentColis.dest.tel}?text=${encodeURIComponent(message)}`, '_blank');
+    }
+
+    document.addEventListener('click', (e) => {
+        const sidebar = document.getElementById('sidebar');
+        const burger = document.querySelector('.burger-icon');
+        if (sidebar.classList.contains('active') && !sidebar.contains(e.target) && !burger.contains(e.target)) {
+            sidebar.classList.remove('active');
+        }
+    });
+</script>
+
+</body>
+</html>

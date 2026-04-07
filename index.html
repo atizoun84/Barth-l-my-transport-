@@ -1,0 +1,325 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Barthélémy Transport - Accueil</title>
+    <link rel="manifest" href="manifest.json">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;700&family=Righteous&display=swap" rel="stylesheet">
+    
+    <style>
+        :root {
+            --gozem-green: #00D18B;
+            --gozem-dark: #1A1A1A;
+            --card-bg: rgba(45, 45, 45, 0.9);
+            --text-white: #FFFFFF;
+        }
+
+        body {
+            margin: 0;
+            font-family: 'Inter', sans-serif;
+            background: url('fond.png') no-repeat center center fixed;
+            background-size: cover;
+            color: var(--text-white);
+            overflow-x: hidden;
+        }
+
+        /* Couche de contraste pour l'image de fond */
+        .overlay {
+            background: rgba(0, 0, 0, 0.7);
+            min-height: 100vh;
+            width: 100%;
+            position: relative;
+        }
+
+        /* Header Style Gozem */
+        .navbar-custom {
+            background-color: var(--gozem-dark);
+            border-bottom: 2px solid var(--gozem-green);
+            padding: 10px 15px;
+        }
+
+        .burger-icon {
+            font-size: 1.8rem;
+            color: var(--gozem-green);
+            cursor: pointer;
+            border: none;
+            background: none;
+        }
+
+        /* Modification : Déploiement Vertical au lieu de latéral */
+        .sidebar {
+            width: 100%;
+            max-height: 0;
+            position: absolute;
+            top: 72px; /* Hauteur ajustée du header */
+            left: 0;
+            background: var(--gozem-dark);
+            transition: max-height 0.4s ease-in-out;
+            z-index: 1060;
+            overflow: hidden;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.5);
+            border-bottom: 2px solid var(--gozem-green);
+        }
+
+        .sidebar.active { max-height: 400px; }
+
+        .sidebar-header {
+            padding: 20px;
+            text-align: center;
+            border-bottom: 1px solid rgba(255,255,255,0.1);
+        }
+
+        .logo-nav { width: 70px; margin-bottom: 10px; border-radius: 10px; }
+
+        .nav-link-custom {
+            padding: 15px 25px;
+            color: white;
+            text-decoration: none;
+            display: block;
+            font-size: 1.1rem;
+            border-bottom: 1px solid rgba(255,255,255,0.05);
+            text-align: center;
+        }
+
+        .nav-link-custom:hover {
+            background: var(--gozem-green);
+            color: var(--gozem-dark);
+            font-weight: bold;
+        }
+
+        /* Cartes du Tableau de bord */
+        .stat-card {
+            background: var(--card-bg);
+            border-left: 5px solid var(--gozem-green);
+            border-radius: 12px;
+            padding: 20px;
+            margin-bottom: 15px;
+            backdrop-filter: blur(5px);
+        }
+
+        .btn-main {
+            background-color: var(--gozem-green);
+            color: var(--gozem-dark);
+            font-weight: bold;
+            padding: 15px;
+            border-radius: 10px;
+            border: none;
+            width: 100%;
+            margin-top: 10px;
+        }
+
+        .status-badge {
+            background: rgba(0, 209, 139, 0.2);
+            color: var(--gozem-green);
+            padding: 5px 12px;
+            border-radius: 20px;
+            font-size: 0.8rem;
+        }
+
+        /* Modification : Police spéciale et Logo redimensionné en Header */
+        .app-title {
+            font-family: 'Righteous', cursive;
+            font-size: 1.1rem;
+            color: var(--text-white);
+            letter-spacing: 0.5px;
+            text-transform: uppercase;
+            line-height: 1.2;
+        }
+
+        .header-logo {
+            width: 50px; /* Redimensionnement visible */
+            height: auto;
+            margin-right: 10px;
+            border-radius: 5px;
+        }
+
+        .sub-title-header {
+            font-size: 0.75rem;
+            font-family: 'Inter', sans-serif;
+            color: var(--gozem-green);
+            display: block;
+            font-weight: 400;
+        }
+
+        /* Bouton d'installation flottant */
+        #install-btn {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            background-color: var(--gozem-green);
+            color: var(--gozem-dark);
+            border: none;
+            border-radius: 50px;
+            padding: 12px 20px;
+            font-weight: bold;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.3);
+            display: none; /* Caché par défaut */
+            z-index: 2000;
+            font-size: 0.9rem;
+        }
+    </style>
+</head>
+<body>
+
+<div class="overlay">
+    <nav class="navbar-custom d-flex align-items-center justify-content-between">
+        <div class="d-flex align-items-center">
+            <button class="burger-icon" onclick="toggleSidebar()">☰</button>
+            <img src="logo maison.png" alt="Logo" class="header-logo ms-2">
+            <div class="app-title">
+                BARTHÉLÉMY TRANSPORT
+                <span class="sub-title-header">Service des colis confiés • Accueil</span>
+            </div>
+        </div>
+        <div class="text-end">
+            <span class="status-badge d-none d-sm-inline">● Glazoué ↔ Parakou</span>
+        </div>
+    </nav>
+
+    <div class="sidebar" id="sidebar">
+        <nav>
+            <a href="index.html" class="nav-link-custom">🏠 Tableau de bord</a>
+            <a href="reception.html" class="nav-link-custom">📥 Réception Colis</a>
+            <a href="livraison.html" class="nav-link-custom">📤 Livraison (Code)</a>
+            <a href="inventaire.html" class="nav-link-custom">📋 Inventaire des colis</a>
+            <a href="config.html" class="nav-link-custom">⚙️ Configuration</a>
+        </nav>
+    </div>
+
+    <div class="container py-4">
+        <div class="text-center mb-4">
+            <h2 class="fw-bold">Bonjour, <span id="display-name">Barthélémy</span> 👋</h2>
+            <p class="text-light">Prêt pour le trajet d'aujourd'hui ?</p>
+        </div>
+
+        <div class="row">
+            <div class="col-6">
+                <div class="stat-card text-center">
+                    <h2 id="colis-count">0</h2>
+                    <p class="mb-0 small">En attente</p>
+                </div>
+            </div>
+            <div class="col-6">
+                <div class="stat-card text-center border-info">
+                    <h2 id="livre-count">0</h2>
+                    <p class="mb-0 small">Livrables</p>
+                </div>
+            </div>
+        </div>
+
+        <div class="mt-4">
+            <h5 class="mb-3">Actions Rapides</h5>
+            <button class="btn-main shadow" onclick="location.href='reception.html'">
+                NOUVELLE RÉCEPTION 📥
+            </button>
+            <button class="btn-main shadow mt-3 bg-white" onclick="location.href='livraison.html'">
+                VALIDER UNE LIVRAISON 📤
+            </button>
+            <button class="btn-main shadow mt-3 bg-info text-white" onclick="location.href='inventaire.html'">
+                INVENTAIRE COMPLET 📋
+            </button>
+        </div>
+    </div>
+</div>
+
+<button id="install-btn">Installer l'App 📲</button>
+
+<script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/12.11.0/firebase-app.js";
+    import { getDatabase, ref, set, onValue, push } from "https://www.gstatic.com/firebasejs/12.11.0/firebase-database.js";
+
+    const firebaseConfig = {
+        apiKey: "AIzaSyDIOT3eym4lqX0wPNKIFwwuKGzjlofyaPM",
+        authDomain: "barthelemy-transport.firebaseapp.com",
+        databaseURL: "https://barthelemy-transport-default-rtdb.europe-west1.firebasedatabase.app/",
+        projectId: "barthelemy-transport",
+        storageBucket: "barthelemy-transport.firebasestorage.app",
+        messagingSenderId: "430598535240",
+        appId: "1:430598535240:web:6261039803e0ae7be4407d"
+    };
+
+    const app = initializeApp(firebaseConfig);
+    const db = getDatabase(app);
+
+    // --- LOGIQUE CLOUD-FIRST ---
+    const colisRef = ref(db, 'colis');
+    onValue(colisRef, (snapshot) => {
+        const data = snapshot.val();
+        const list = data ? Object.values(data) : [];
+        localStorage.setItem('bt_colis_data', JSON.stringify(list));
+        if (typeof updateDashboardStats === "function") updateDashboardStats();
+    });
+
+    window.saveColisToCloud = function(colisData) {
+        const newColisRef = push(ref(db, 'colis'));
+        colisData.id = newColisRef.key;
+        return set(newColisRef, colisData);
+    };
+
+    window.updateColisStatusCloud = function(colisId, updates) {
+        const specificColisRef = ref(db, `colis/${colisId}`);
+        let allColis = JSON.parse(localStorage.getItem('bt_colis_data') || "[]");
+        let target = allColis.find(c => c.id === colisId);
+        if(target) {
+            Object.assign(target, updates);
+            set(ref(db, `colis/${colisId}`), target);
+        }
+    };
+</script>
+
+<script>
+    // --- LOGIQUE D'INSTALLATION PWA ---
+    let deferredPrompt;
+    const installBtn = document.getElementById('install-btn');
+
+    window.addEventListener('beforeinstallprompt', (e) => {
+        e.preventDefault();
+        deferredPrompt = e;
+        installBtn.style.display = 'block'; // Affiche le bouton si installable
+    });
+
+    installBtn.addEventListener('click', async () => {
+        if (deferredPrompt) {
+            deferredPrompt.prompt();
+            const { outcome } = await deferredPrompt.userChoice;
+            if (outcome === 'accepted') {
+                console.log('Utilisateur a accepté l\'installation');
+            }
+            deferredPrompt = null;
+            installBtn.style.display = 'none';
+        }
+    });
+
+    window.addEventListener('appinstalled', () => {
+        installBtn.style.display = 'none';
+        deferredPrompt = null;
+    });
+
+    function toggleSidebar() {
+        document.getElementById('sidebar').classList.toggle('active');
+    }
+
+    function updateDashboardStats() {
+        const profile = JSON.parse(localStorage.getItem('bt_profile') || '{"name":"Barthélémy"}');
+        document.getElementById('display-name').innerText = profile.name;
+
+        const db_colis = JSON.parse(localStorage.getItem('bt_colis_data') || "[]");
+        const enAttente = db_colis.filter(c => c.statut === "En attente").length;
+        
+        document.getElementById('colis-count').innerText = enAttente;
+        document.getElementById('livre-count').innerText = enAttente;
+    }
+
+    document.addEventListener('DOMContentLoaded', () => {
+        updateDashboardStats();
+    });
+
+    document.querySelector('.container').addEventListener('click', () => {
+        document.getElementById('sidebar').classList.remove('active');
+    });
+</script>
+
+</body>
+</html>

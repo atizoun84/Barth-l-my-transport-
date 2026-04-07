@@ -1,0 +1,599 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Barthélémy Transport - Inventaire Global</title>
+    <link rel="manifest" href="manifest.json">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;700&family=Righteous&display=swap" rel="stylesheet">
+    
+    <style>
+        :root {
+            --gozem-green: #00D18B;
+            --gozem-dark: #1A1A1A;
+            --card-bg: rgba(45, 45, 45, 0.9);
+            --text-white: #FFFFFF;
+            --border-light: rgba(255, 255, 255, 0.1);
+        }
+
+        body {
+            margin: 0;
+            font-family: 'Inter', sans-serif;
+            background: url('fond.png') no-repeat center center fixed;
+            background-size: cover;
+            color: var(--text-white);
+            overflow-x: hidden;
+        }
+
+        /* Verrouillage Initial */
+        #page-lock {
+            position: fixed;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background: #000;
+            z-index: 9999;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+
+        .overlay-bg {
+            background: rgba(0, 0, 0, 0.85);
+            min-height: 100vh;
+            width: 100%;
+        }
+
+        /* --- Header & Sidebar (Héritage) --- */
+        .navbar-custom {
+            background-color: var(--gozem-dark);
+            border-bottom: 2px solid var(--gozem-green);
+            padding: 10px 15px;
+        }
+
+        .burger-icon {
+            font-size: 1.8rem;
+            color: var(--gozem-green);
+            cursor: pointer;
+            border: none;
+            background: none;
+        }
+
+        .sidebar {
+            width: 100%;
+            max-height: 0;
+            position: absolute;
+            top: 72px;
+            left: 0;
+            background: var(--gozem-dark);
+            transition: max-height 0.4s ease-in-out;
+            z-index: 1060;
+            overflow: hidden;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.5);
+            border-bottom: 2px solid var(--gozem-green);
+        }
+
+        .sidebar.active { max-height: 450px; }
+
+        .nav-link-custom {
+            padding: 15px 25px;
+            color: white;
+            text-decoration: none;
+            display: block;
+            font-size: 1.1rem;
+            border-bottom: 1px solid var(--border-light);
+            text-align: center;
+        }
+
+        .nav-link-custom:hover { background: var(--gozem-green); color: var(--gozem-dark); font-weight: bold; }
+
+        .app-title {
+            font-family: 'Righteous', cursive;
+            font-size: 1.1rem;
+            color: var(--text-white);
+            text-transform: uppercase;
+        }
+
+        .sub-title-header { font-size: 0.75rem; color: var(--gozem-green); display: block; font-weight: 400; }
+
+        .header-logo { width: 50px; height: auto; border-radius: 5px; }
+
+        /* --- Filtres & Recherche --- */
+        .filter-section {
+            background: var(--card-bg);
+            border-radius: 12px;
+            padding: 15px;
+            margin-bottom: 20px;
+            border: 1px solid var(--border-light);
+        }
+
+        .form-control-custom {
+            background: rgba(255, 255, 255, 0.08);
+            border: 1px solid rgba(0, 209, 139, 0.4);
+            color: white;
+            border-radius: 8px;
+        }
+
+        .form-control-custom:focus {
+            background: rgba(255, 255, 255, 0.12);
+            color: white;
+            border-color: var(--gozem-green);
+        }
+
+        /* --- Plaquette Financière --- */
+        .finance-card {
+            background: linear-gradient(135deg, #1a1a1a 0%, #2d2d2d 100%);
+            border: 1px solid var(--gozem-green);
+            border-radius: 15px;
+            padding: 20px;
+            margin-bottom: 20px;
+        }
+
+        .solde-montant { font-size: 1.8rem; font-weight: 800; color: var(--gozem-green); }
+
+        /* --- Liste d'Inventaire --- */
+        .inventory-card {
+            background: var(--card-bg);
+            border-radius: 12px;
+            padding: 15px;
+            margin-bottom: 12px;
+            border-left: 4px solid var(--gozem-green);
+            transition: 0.3s;
+        }
+
+        .inventory-card:hover { transform: translateY(-2px); border-left-width: 8px; }
+
+        .colis-meta { font-size: 0.75rem; color: rgba(255,255,255,0.5); }
+        .colis-title { font-weight: 700; color: var(--gozem-green); }
+        .status-pill {
+            font-size: 0.65rem;
+            padding: 3px 8px;
+            border-radius: 20px;
+            text-transform: uppercase;
+            font-weight: bold;
+        }
+        .status-pending { background: rgba(255, 193, 7, 0.2); color: #ffc107; }
+        .status-delivered { background: rgba(0, 209, 139, 0.2); color: var(--gozem-green); }
+
+        .btn-action {
+            background: rgba(255,255,255,0.1);
+            border: none;
+            color: white;
+            padding: 5px 10px;
+            border-radius: 6px;
+            font-size: 0.8rem;
+        }
+
+        /* Footer */
+        .footer-mention { font-size: 0.7rem; color: rgba(255,255,255,0.4); text-align: center; margin-top: 30px; padding-bottom: 20px; }
+
+        /* Animation Overlay Suppression */
+        #delete-overlay {
+            display: none;
+            position: fixed;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(220, 53, 69, 0.9);
+            z-index: 4000;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            backdrop-filter: blur(5px);
+        }
+
+        /* Modale Retrait */
+        .modal-content-custom {
+            background: var(--gozem-dark);
+            border: 1px solid var(--gozem-green);
+            color: white;
+        }
+        .history-item {
+            font-size: 0.8rem;
+            border-bottom: 1px solid var(--border-light);
+            padding: 8px 0;
+        }
+    </style>
+</head>
+<body>
+
+<div id="page-lock">
+    <div class="text-center">
+        <div class="spinner-border text-success mb-3" role="status"></div>
+        <p class="text-white">Vérification de l'accès...</p>
+    </div>
+</div>
+
+<div class="overlay-bg">
+    <nav class="navbar-custom d-flex align-items-center justify-content-between">
+        <div class="d-flex align-items-center">
+            <button class="burger-icon" onclick="toggleSidebar()">☰</button>
+            <img src="logo maison.png" alt="Logo" class="header-logo ms-2">
+            <div class="app-title ms-2">
+                BARTHÉLÉMY TRANSPORT
+                <span class="sub-title-header">Inventaire Centralisé • 2026</span>
+            </div>
+        </div>
+    </nav>
+
+    <div class="sidebar" id="sidebar">
+        <nav>
+            <a href="index.html" class="nav-link-custom">🏠 Tableau de bord</a>
+            <a href="reception.html" class="nav-link-custom">📥 Réception Colis</a>
+            <a href="livraison.html" class="nav-link-custom">📤 Livraison (Code)</a>
+            <a href="inventaire.html" class="nav-link-custom">📋 Inventaire des colis</a>
+            <a href="config.html" class="nav-link-custom">⚙️ Configuration</a>
+        </nav>
+    </div>
+
+    <div class="container py-4">
+        
+        <div class="finance-card shadow">
+            <div class="row align-items-center">
+                <div class="col-7">
+                    <div class="small text-white-50">SOLDE EN CAISSE</div>
+                    <div class="solde-montant" id="solde-valeur">0 FCFA</div>
+                </div>
+                <div class="col-5 text-end">
+                    <button class="btn btn-sm btn-outline-success border-1 fw-bold" data-bs-toggle="modal" data-bs-target="#modalRetrait">RETRAIT 💸</button>
+                </div>
+            </div>
+            <hr class="border-light opacity-10">
+            <div class="row text-center">
+                <div class="col-6 border-end border-secondary">
+                    <div class="small text-white-50">Livrés (Reçu)</div>
+                    <div class="fw-bold text-success" id="finance-livre">0 F</div>
+                </div>
+                <div class="col-6">
+                    <div class="small text-white-50">En attente</div>
+                    <div class="fw-bold text-warning" id="finance-attente">0 F</div>
+                </div>
+            </div>
+        </div>
+
+        <div class="filter-section shadow-sm">
+            <div class="row g-2">
+                <div class="col-12">
+                    <input type="text" id="search-input" class="form-control form-control-custom" placeholder="Rechercher un nom ou un code..." oninput="renderAll()">
+                </div>
+                <div class="col-6">
+                    <select id="filter-ville" class="form-select form-control-custom" onchange="renderAll()">
+                        <option value="">Toutes les villes</option>
+                    </select>
+                </div>
+                <div class="col-6">
+                    <select id="filter-statut" class="form-select form-control-custom" onchange="renderAll()">
+                        <option value="">Tous les statuts</option>
+                        <option value="En attente">En attente</option>
+                        <option value="Livré">Livré</option>
+                    </select>
+                </div>
+            </div>
+        </div>
+
+        <div class="d-flex justify-content-between align-items-center mb-3">
+            <h3 class="fw-bold mb-0">📋 Liste Colis</h3>
+            <button class="btn btn-sm btn-light fw-bold" onclick="toggleListe()">Afficher / Masquer</button>
+        </div>
+
+        <div id="inventory-container" style="display: none;">
+            <div id="inventory-list"></div>
+        </div>
+
+        <hr class="border-light my-4">
+        
+        <div class="d-flex justify-content-between align-items-center mb-3">
+            <h5 class="fw-bold mb-0 text-white-50">📜 Historique Retraits</h5>
+            <button class="btn btn-sm btn-outline-secondary border-0" onclick="toggleHistory()">Voir</button>
+        </div>
+        <div id="history-container" style="display: none;" class="filter-section">
+            <div id="retrait-list">
+                <p class="text-center small opacity-50">Aucun retrait effectué.</p>
+            </div>
+        </div>
+
+        <div class="footer-mention">
+            BARTHÉLÉMY TRANSPORT • Système Sécurisé de Gestion de Colis<br>
+            Version PWA 2.0 • 2026
+        </div>
+    </div>
+</div>
+
+<div class="modal fade" id="modalRetrait" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content modal-content-custom">
+      <div class="modal-header border-0">
+        <h5 class="modal-title fw-bold text-success">Effectuer un retrait</h5>
+        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <div class="modal-body">
+        <div class="mb-3">
+            <label class="form-label small">Montant à retirer (FCFA)</label>
+            <input type="number" id="retrait-montant" class="form-control form-control-custom" placeholder="Ex: 5000">
+        </div>
+        <div class="mb-3">
+            <label class="form-label small">Motif du retrait</label>
+            <input type="text" id="retrait-motif" class="form-control form-control-custom" placeholder="Ex: Achat Carburant">
+        </div>
+        <div class="mb-3">
+            <label class="form-label small">Code ADMIN</label>
+            <input type="password" id="retrait-admin-code" class="form-control form-control-custom" placeholder="****">
+        </div>
+      </div>
+      <div class="modal-footer border-0">
+        <button type="button" class="btn btn-outline-light" data-bs-dismiss="modal">Annuler</button>
+        <button type="button" class="btn btn-success fw-bold" onclick="validerRetrait()">Confirmer le Retrait</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div id="delete-overlay">
+    <div class="text-center text-white">
+        <h2 class="fw-bold">COLIS SUPPRIMÉ</h2>
+        <p>Mise à jour de l'inventaire en cours...</p>
+    </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+
+<script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/12.11.0/firebase-app.js";
+    import { getDatabase, ref, set, onValue, push, remove } from "https://www.gstatic.com/firebasejs/12.11.0/firebase-database.js";
+
+    const firebaseConfig = {
+        apiKey: "AIzaSyDIOT3eym4lqX0wPNKIFwwuKGzjlofyaPM",
+        authDomain: "barthelemy-transport.firebaseapp.com",
+        databaseURL: "https://barthelemy-transport-default-rtdb.europe-west1.firebasedatabase.app/",
+        projectId: "barthelemy-transport",
+        storageBucket: "barthelemy-transport.firebasestorage.app",
+        messagingSenderId: "430598535240",
+        appId: "1:430598535240:web:6261039803e0ae7be4407d"
+    };
+
+    const app = initializeApp(firebaseConfig);
+    const db = getDatabase(app);
+
+    // --- LOGIQUE CLOUD-FIRST ---
+
+    // Écouter les Colis
+    const colisRef = ref(db, 'colis');
+    onValue(colisRef, (snapshot) => {
+        const data = snapshot.val();
+        window.db_colis = data ? Object.values(data) : [];
+        localStorage.setItem('bt_colis_data', JSON.stringify(window.db_colis));
+        if (typeof window.renderAll === "function") window.renderAll();
+        if (typeof window.updateFinance === "function") window.updateFinance();
+    });
+
+    // Écouter les Retraits
+    const retraitsRef = ref(db, 'retraits');
+    onValue(retraitsRef, (snapshot) => {
+        const data = snapshot.val();
+        window.db_retraits = data ? Object.values(data) : [];
+        localStorage.setItem('bt_retraits_history', JSON.stringify(window.db_retraits));
+        if (typeof window.renderRetraits === "function") window.renderRetraits();
+        if (typeof window.updateFinance === "function") window.updateFinance();
+    });
+
+    // Fonctions Globales pour le Cloud
+    window.saveColisToCloud = function(colisData) {
+        const newColisRef = push(ref(db, 'colis'));
+        colisData.id = newColisRef.key;
+        return set(newColisRef, colisData);
+    };
+
+    window.saveRetraitToCloud = function(retraitData) {
+        const newRetraitRef = push(ref(db, 'retraits'));
+        retraitData.id = newRetraitRef.key;
+        return set(newRetraitRef, retraitData);
+    };
+
+    window.deleteColisFromCloud = function(colisId) {
+        return remove(ref(db, `colis/${colisId}`));
+    };
+</script>
+
+<script>
+    window.db_colis = [];
+    window.db_retraits = [];
+
+    document.addEventListener('DOMContentLoaded', () => {
+        verifierAccesAdmin();
+    });
+
+    function verifierAccesAdmin() {
+        const profile = JSON.parse(localStorage.getItem('bt_profile') || '{"code":"1234"}');
+        const code = prompt("🔒 ACCÈS RESTREINT\nVeuillez saisir le code ADMIN pour consulter l'inventaire :");
+
+        if (code === profile.code) {
+            document.getElementById('page-lock').style.display = 'none';
+            initInventory();
+        } else {
+            alert("Accès refusé !");
+            window.location.href = "index.html";
+        }
+    }
+
+    function initInventory() {
+        loadFilterOptions();
+        // Les données sont chargées via onValue dans le script module
+    }
+
+    function toggleSidebar() {
+        document.getElementById('sidebar').classList.toggle('active');
+    }
+
+    function toggleListe() {
+        const container = document.getElementById('inventory-container');
+        container.style.display = (container.style.display === 'none') ? 'block' : 'none';
+    }
+
+    function toggleHistory() {
+        const container = document.getElementById('history-container');
+        container.style.display = (container.style.display === 'none') ? 'block' : 'none';
+    }
+
+    function loadFilterOptions() {
+        const selectVille = document.getElementById('filter-ville');
+        const villes = JSON.parse(localStorage.getItem('bt_localites') || '["Parakou", "Glazoué", "Savè", "Dassa"]');
+        villes.forEach(v => {
+            let opt = document.createElement('option');
+            opt.value = v; opt.innerText = v;
+            selectVille.appendChild(opt);
+        });
+    }
+
+    function updateFinance() {
+        let totalLivre = 0;
+        let totalAttente = 0;
+
+        window.db_colis.forEach(c => {
+            const prix = parseFloat(c.prix) || 0;
+            if (c.statut === "Livré") totalLivre += prix;
+            else totalAttente += prix;
+        });
+
+        const totalRetraits = window.db_retraits.reduce((sum, r) => sum + parseFloat(r.montant), 0);
+        const soldeReel = totalLivre - totalRetraits;
+
+        document.getElementById('solde-valeur').innerText = soldeReel.toLocaleString() + " FCFA";
+        document.getElementById('finance-livre').innerText = totalLivre.toLocaleString() + " F";
+        document.getElementById('finance-attente').innerText = totalAttente.toLocaleString() + " F";
+    }
+
+    function validerRetrait() {
+        const montant = parseFloat(document.getElementById('retrait-montant').value);
+        const motif = document.getElementById('retrait-motif').value;
+        const codeInput = document.getElementById('retrait-admin-code').value;
+        const profile = JSON.parse(localStorage.getItem('bt_profile') || '{"code":"1234"}');
+
+        if (codeInput !== profile.code) {
+            alert("Code ADMIN incorrect !");
+            return;
+        }
+
+        if (!montant || montant <= 0 || !motif) {
+            alert("Veuillez remplir tous les champs correctement.");
+            return;
+        }
+
+        const totalLivre = window.db_colis.filter(c => c.statut === "Livré").reduce((sum, c) => sum + parseFloat(c.prix), 0);
+        const totalRetraits = window.db_retraits.reduce((sum, r) => sum + parseFloat(r.montant), 0);
+        const soldeDisponible = totalLivre - totalRetraits;
+
+        if (montant > soldeDisponible) {
+            alert("Solde insuffisant pour ce retrait.");
+            return;
+        }
+
+        const nouveauRetrait = {
+            date: new Date().toLocaleString('fr-FR'),
+            montant: montant,
+            motif: motif
+        };
+
+        // Envoi au Cloud
+        window.saveRetraitToCloud(nouveauRetrait);
+        
+        bootstrap.Modal.getInstance(document.getElementById('modalRetrait')).hide();
+        document.getElementById('retrait-montant').value = "";
+        document.getElementById('retrait-motif').value = "";
+        document.getElementById('retrait-admin-code').value = "";
+        
+        alert("Retrait enregistré sur le Cloud !");
+    }
+
+    function renderRetraits() {
+        const container = document.getElementById('retrait-list');
+        if (window.db_retraits.length === 0) {
+            container.innerHTML = `<p class="text-center small opacity-50">Aucun retrait effectué.</p>`;
+            return;
+        }
+        container.innerHTML = window.db_retraits.map(r => `
+            <div class="history-item d-flex justify-content-between">
+                <div>
+                    <span class="text-white-50">${r.date}</span><br>
+                    <b class="text-info">${r.motif}</b>
+                </div>
+                <div class="text-end">
+                    <b class="text-danger">-${r.montant} F</b>
+                </div>
+            </div>
+        `).join('');
+    }
+
+    function renderAll() {
+        const container = document.getElementById('inventory-list');
+        const search = document.getElementById('search-input').value.toLowerCase();
+        const fVille = document.getElementById('filter-ville').value;
+        const fStatut = document.getElementById('filter-statut').value;
+
+        const filtered = window.db_colis.filter(c => {
+            const matchesSearch = (c.dest?.nom || "").toLowerCase().includes(search) || 
+                                 (c.exp?.nom || "").toLowerCase().includes(search) || 
+                                 (c.id || "").toLowerCase().includes(search) ||
+                                 (c.etiquette || "").toLowerCase().includes(search);
+            const matchesVille = fVille === "" || c.dest?.ville === fVille;
+            const matchesStatut = fStatut === "" || c.statut === fStatut;
+            return matchesSearch && matchesVille && matchesStatut;
+        });
+
+        if (filtered.length === 0) {
+            container.innerHTML = `<div class="text-center py-5 opacity-50">Aucun colis trouvé.</div>`;
+            return;
+        }
+
+        container.innerHTML = filtered.map(c => `
+            <div class="inventory-card">
+                <div class="d-flex justify-content-between align-items-start mb-2">
+                    <div>
+                        <span class="colis-meta">${c.date} • ID: ${c.id}</span>
+                        <div class="colis-title">🏷️ ${c.etiquette}</div>
+                    </div>
+                    <span class="status-pill ${c.statut === 'Livré' ? 'status-delivered' : 'status-pending'}">
+                        ${c.statut}
+                    </span>
+                </div>
+                <div class="row g-0 align-items-center">
+                    <div class="col-8">
+                        <div class="small"><b class="text-white-50">De:</b> ${c.exp?.nom}</div>
+                        <div class="small"><b class="text-white-50">Vers:</b> ${c.dest?.nom} (${c.dest?.ville})</div>
+                        <div class="small mt-1 text-info italic">📦 ${c.desc || 'Sans description'}</div>
+                    </div>
+                    <div class="col-4 text-end">
+                        <div class="fw-bold text-success">${c.prix} F</div>
+                        <div class="btn-group mt-2">
+                             <button class="btn-action bg-danger" onclick="deleteColisSecure('${c.id}')">🗑️</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        `).join('');
+    }
+
+    function deleteColisSecure(id) {
+        const profile = JSON.parse(localStorage.getItem('bt_profile') || '{"code":"1234"}');
+        const entry = prompt("Saisissez le code ADMIN pour supprimer ce colis du Cloud :");
+
+        if (entry === profile.code) {
+            window.deleteColisFromCloud(id).then(() => {
+                const overlay = document.getElementById('delete-overlay');
+                overlay.style.display = 'flex';
+                setTimeout(() => {
+                    overlay.style.display = 'none';
+                }, 1200);
+            });
+        } else if (entry !== null) {
+            alert("⚠️ Code incorrect.");
+        }
+    }
+
+    document.addEventListener('click', (e) => {
+        const sidebar = document.getElementById('sidebar');
+        const burger = document.querySelector('.burger-icon');
+        if (sidebar?.classList.contains('active') && !sidebar.contains(e.target) && !burger.contains(e.target)) {
+            sidebar.classList.remove('active');
+        }
+    });
+</script>
+
+</body>
+</html>
