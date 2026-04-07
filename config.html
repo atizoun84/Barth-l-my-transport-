@@ -8,6 +8,19 @@
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;700&family=Righteous&display=swap" rel="stylesheet">
     
+    <script>
+        // --- CONSEIL D'EXPERT : PROTECTION ACCÈS DIRECT ---
+        // Vérification sommaire à l'entrée de la page pour bloquer le contournement par URL
+        if (!sessionStorage.getItem('admin_authenticated')) {
+            const pin = prompt("Accès restreint. Code PIN :");
+            if (pin === "1234") {
+                sessionStorage.setItem('admin_authenticated', 'true');
+            } else {
+                window.location.href = "index.html";
+            }
+        }
+    </script>
+
     <style>
         :root {
             --gozem-green: #00D18B;
@@ -66,7 +79,7 @@
             border-bottom: 2px solid var(--gozem-green);
         }
 
-        .sidebar.active { max-height: 450px; } /* Ajusté pour le lien supplémentaire */
+        .sidebar.active { max-height: 450px; }
 
         .nav-link-custom {
             padding: 15px 25px;
@@ -240,7 +253,7 @@
             <a href="reception.html" class="nav-link-custom">📥 Réception Colis</a>
             <a href="livraison.html" class="nav-link-custom">📤 Livraison (Code)</a>
             <a href="inventaire.html" class="nav-link-custom">📋 Inventaire</a>
-            <a href="config.html" class="nav-link-custom">⚙️ Configuration</a>
+            <a href="#" onclick="if(verifyAdmin()) location.href='config.html'" class="nav-link-custom">⚙️ Configuration</a>
         </nav>
     </div>
 
@@ -370,9 +383,20 @@
     const app = initializeApp(firebaseConfig);
     const db = getDatabase(app);
 
-    // --- LOGIQUE CLOUD-FIRST POUR CONFIGURATION ---
+    // --- LOGIQUE ADMIN PIN ---
+    const ADMIN_PIN = "1234"; 
 
-    // 1. Sync Profil
+    window.verifyAdmin = function() {
+        const input = prompt("Entrez le code PIN Administrateur :");
+        if (input === ADMIN_PIN) {
+            return true;
+        } else {
+            alert("Code PIN incorrect. Accès refusé.");
+            return false;
+        }
+    };
+
+    // --- LOGIQUE CLOUD-FIRST POUR CONFIGURATION ---
     const profileRef = ref(db, 'config/profile');
     onValue(profileRef, (snapshot) => {
         const data = snapshot.val();
@@ -384,7 +408,6 @@
         }
     });
 
-    // 2. Sync Localités
     const locRef = ref(db, 'config/localites');
     onValue(locRef, (snapshot) => {
         const list = snapshot.val() || [];
@@ -392,7 +415,6 @@
         loadLocalites();
     });
 
-    // 3. Sync Collaborateurs
     const collRef = ref(db, 'config/collabos');
     onValue(collRef, (snapshot) => {
         const list = snapshot.val() || [];
@@ -400,7 +422,6 @@
         loadCollabos();
     });
 
-    // Exportation des fonctions de sauvegarde vers le window pour les scripts classiques
     window.saveProfileToCloud = (data) => set(ref(db, 'config/profile'), data);
     window.saveLocalitesToCloud = (data) => set(ref(db, 'config/localites'), data);
     window.saveCollabosToCloud = (data) => set(ref(db, 'config/collabos'), data);
@@ -410,23 +431,14 @@
     let isLocked = true;
 
     document.addEventListener('DOMContentLoaded', () => {
-        checkAdminAccess();
-    });
-
-    function checkAdminAccess() {
-        const profile = JSON.parse(localStorage.getItem('bt_profile') || '{"code":"1234"}');
-        const entry = prompt("Accès Restreint : Saisissez le code ADMIN pour accéder à la configuration :");
-        
-        if (entry === profile.code) {
+        // Le wrapper ne s'affiche que si sessionStorage est valide (déjà géré par le script du head)
+        if (sessionStorage.getItem('admin_authenticated') === 'true') {
             document.getElementById('main-wrapper').style.display = 'block';
             loadLocalites();
             loadCollabos();
             applyLockState();
-        } else {
-            alert("⚠️ Accès refusé. Code incorrect.");
-            window.location.href = "index.html";
         }
-    }
+    });
 
     function toggleSidebar() {
         document.getElementById('sidebar').classList.toggle('active');
@@ -500,6 +512,7 @@
     function loadLocalites() {
         const tbody = document.getElementById('localites-tbody');
         const list = JSON.parse(localStorage.getItem('bt_localites') || "[]");
+        if(!tbody) return;
         tbody.innerHTML = '';
         list.forEach((loc, index) => {
             const row = tbody.insertRow();
@@ -527,6 +540,7 @@
     function loadCollabos() {
         const tbody = document.getElementById('collabos-tbody');
         const list = JSON.parse(localStorage.getItem('bt_collabos') || "[]");
+        if(!tbody) return;
         tbody.innerHTML = '';
         list.forEach((c, index) => {
             const row = tbody.insertRow();

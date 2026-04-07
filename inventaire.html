@@ -219,7 +219,7 @@
             <a href="reception.html" class="nav-link-custom">📥 Réception Colis</a>
             <a href="livraison.html" class="nav-link-custom">📤 Livraison (Code)</a>
             <a href="inventaire.html" class="nav-link-custom">📋 Inventaire des colis</a>
-            <a href="config.html" class="nav-link-custom">⚙️ Configuration</a>
+            <a href="#" onclick="if(window.verifyAdmin()) location.href='config.html'" class="nav-link-custom">⚙️ Configuration</a>
         </nav>
     </div>
 
@@ -352,6 +352,20 @@
     const db = getDatabase(app);
 
     // --- LOGIQUE CLOUD-FIRST ---
+    const ADMIN_PIN = "1234";
+
+    window.verifyAdmin = function() {
+        if (sessionStorage.getItem('admin_authenticated') === 'true') return true;
+        
+        const input = prompt("Entrez le code PIN Administrateur :");
+        if (input === ADMIN_PIN) {
+            sessionStorage.setItem('admin_authenticated', 'true');
+            return true;
+        } else {
+            alert("Code PIN incorrect. Accès refusé.");
+            return false;
+        }
+    };
 
     // Écouter les Colis
     const colisRef = ref(db, 'colis');
@@ -400,21 +414,27 @@
     });
 
     function verifierAccesAdmin() {
-        const profile = JSON.parse(localStorage.getItem('bt_profile') || '{"code":"1234"}');
-        const code = prompt("🔒 ACCÈS RESTREINT\nVeuillez saisir le code ADMIN pour consulter l'inventaire :");
+        if (sessionStorage.getItem('admin_authenticated') === 'true') {
+            document.getElementById('page-lock').style.display = 'none';
+            initInventory();
+            return;
+        }
 
-        if (code === profile.code) {
+        const pin = prompt("🔒 ACCÈS RESTREINT\nVeuillez saisir le code PIN ADMIN pour consulter l'inventaire :");
+        const correctPin = "1234"; // Consistent avec ADMIN_PIN
+
+        if (pin === correctPin) {
+            sessionStorage.setItem('admin_authenticated', 'true');
             document.getElementById('page-lock').style.display = 'none';
             initInventory();
         } else {
-            alert("Accès refusé !");
+            alert("Code PIN incorrect. Accès refusé.");
             window.location.href = "index.html";
         }
     }
 
     function initInventory() {
         loadFilterOptions();
-        // Les données sont chargées via onValue dans le script module
     }
 
     function toggleSidebar() {
@@ -463,9 +483,9 @@
         const montant = parseFloat(document.getElementById('retrait-montant').value);
         const motif = document.getElementById('retrait-motif').value;
         const codeInput = document.getElementById('retrait-admin-code').value;
-        const profile = JSON.parse(localStorage.getItem('bt_profile') || '{"code":"1234"}');
+        const correctPin = "1234";
 
-        if (codeInput !== profile.code) {
+        if (codeInput !== correctPin) {
             alert("Code ADMIN incorrect !");
             return;
         }
@@ -490,7 +510,6 @@
             motif: motif
         };
 
-        // Envoi au Cloud
         window.saveRetraitToCloud(nouveauRetrait);
         
         bootstrap.Modal.getInstance(document.getElementById('modalRetrait')).hide();
@@ -570,10 +589,10 @@
     }
 
     function deleteColisSecure(id) {
-        const profile = JSON.parse(localStorage.getItem('bt_profile') || '{"code":"1234"}');
         const entry = prompt("Saisissez le code ADMIN pour supprimer ce colis du Cloud :");
+        const correctPin = "1234";
 
-        if (entry === profile.code) {
+        if (entry === correctPin) {
             window.deleteColisFromCloud(id).then(() => {
                 const overlay = document.getElementById('delete-overlay');
                 overlay.style.display = 'flex';

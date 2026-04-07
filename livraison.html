@@ -199,7 +199,7 @@
         <div class="search-section shadow mb-3">
             <div class="mb-3">
                 <label class="form-label small">FILTRER PAR DESTINATION / VILLE</label>
-                <select id="search-ville" class="form-select form-control-custom" onchange="window.filtrerParVille()">
+                <select id="search-ville" class="form-select form-control-custom" onchange="filtrerParVille()">
                     <option value="">Sélectionner une ville...</option>
                 </select>
             </div>
@@ -254,7 +254,8 @@
                 </div>
             </div>
 
-            <div id="action-zone" class="mt-4"></div>
+            <div id="action-zone" class="mt-4">
+                </div>
         </div>
 
         <div class="footer-mention">
@@ -275,68 +276,78 @@
     </div>
 </div>
 
-<script type="module">
-    import { initializeApp } from "https://www.gstatic.com/firebasejs/12.11.0/firebase-app.js";
-    import { getDatabase, ref, set, onValue, push, update } from "https://www.gstatic.com/firebasejs/12.11.0/firebase-database.js";
-
-    const firebaseConfig = {
-        apiKey: "AIzaSyDIOT3eym4lqX0wPNKIFwwuKGzjlofyaPM",
-        authDomain: "barthelemy-transport.firebaseapp.com",
-        databaseURL: "https://barthelemy-transport-default-rtdb.europe-west1.firebasedatabase.app/",
-        projectId: "barthelemy-transport",
-        storageBucket: "barthelemy-transport.firebasestorage.app",
-        messagingSenderId: "430598535240",
-        appId: "1:430598535240:web:6261039803e0ae7be4407d"
-    };
-
-    const app = initializeApp(firebaseConfig);
-    const db = getDatabase(app);
-
+<script src="sync.js"></script>
+<script>
     let db_colis = [];
     let activeColis = null;
     let tentatives = 0;
     const MAX_TENTATIVES = 3;
 
-    // 1. Synchronisation Cloud-First
-    const colisRef = ref(db, 'colis');
-    onValue(colisRef, (snapshot) => {
-        const data = snapshot.val();
-        // Transformation de l'objet Firebase en tableau avec conservation de la clé Firebase
-        db_colis = data ? Object.keys(data).map(key => ({...data[key], fbKey: key})) : [];
-        localStorage.setItem('bt_colis_data', JSON.stringify(db_colis));
-        
+    document.addEventListener('DOMContentLoaded', () => {
+        syncData();
         loadVilles();
-        // Si un filtre est actif, on rafraîchit la liste
-        const currentVille = document.getElementById('search-ville').value;
-        if(currentVille) filtrerParVille();
+        verifierBlocage();
     });
 
-    // Fonctions globales attachées à window pour rester accessibles depuis le HTML
-    window.toggleSidebar = () => document.getElementById('sidebar').classList.toggle('active');
+    function toggleSidebar() {
+        document.getElementById('sidebar').classList.toggle('active');
+    }
+
+    function syncData() {
+        try {
+            db_colis = JSON.parse(localStorage.getItem('bt_colis_data') || "[]");
+        } catch (e) { db_colis = []; }
+    }
 
     function loadVilles() {
         const select = document.getElementById('search-ville');
         const villes = JSON.parse(localStorage.getItem('bt_localites') || '["Parakou", "Glazoué", "Savè", "Dassa"]');
-        const currentValue = select.value;
-
+        
+        // Nettoyage avant chargement (garde l'option par défaut)
         select.innerHTML = '<option value="">Sélectionner une ville...</option>';
+
         villes.forEach(v => {
+            // Calcul du nombre de colis restant pour cette ville
             const count = db_colis.filter(c => c.dest.ville === v && c.statut !== "Livré").length;
+            
             let opt = document.createElement('option');
             opt.value = v; 
+            // Affichage intelligent du texte avec le compteur
             opt.innerText = `${v} (${count} colis restant${count > 1 ? 's' : ''})`; 
             select.appendChild(opt);
         });
-        select.value = currentValue;
     }
 
-    window.filtrerParVille = () => {
+    function verifierBlocage() {
+        if (localStorage.getItem('bt_locked') === 'true') {
+            document.querySelector('.container').innerHTML = `
+                <div class="text-center mt-5 p-4 bg-danger rounded">
+                    <h2 class="fw-bold">SYSTÈME BLOQUÉ 🔒</h2>
+                    <p>Trop de tentatives frauduleuses détectées.</p>
+                    <input type="password" id="unlock-code" class="form-control mb-2" placeholder="Code ADMIN pour débloquer">
+                    <button class="btn btn-light w-100" onclick="debloquerSysteme()">DÉBLOQUER</button>
+                </div>`;
+        }
+    }
+
+    function debloquerSysteme() {
+        const profile = JSON.parse(localStorage.getItem('bt_profile') || '{"code":"1234"}');
+        if (document.getElementById('unlock-code').value === profile.code) {
+            localStorage.setItem('bt_locked', 'false');
+            localStorage.setItem('bt_tentatives', '0');
+            location.reload();
+        } else { alert("Code incorrect !"); }
+    }
+
+    function filtrerParVille() {
         const ville = document.getElementById('search-ville').value;
         const container = document.getElementById('suggestions-container');
         container.innerHTML = "";
+        
         if (!ville) return;
 
         const filtered = db_colis.filter(c => c.dest.ville === ville && c.statut !== "Livré");
+        
         if (filtered.length === 0) {
             container.innerHTML = "<p class='small text-center py-2'>Aucun colis en attente pour cette ville.</p>";
             return;
@@ -364,9 +375,7 @@
         
         document.getElementById('resultat-container').style.display = 'block';
         document.getElementById('suggestions-container').innerHTML = "";
-        document.getElementById('action-zone').innerHTML = `<button class="btn-deliver shadow" id="btn-valider">LIVRER LE COLIS</button>`;
-        
-        document.getElementById('btn-valider').onclick = validerLivraison;
+        document.getElementById('action-zone').innerHTML = `<button class="btn-deliver shadow" onclick="validerLivraison()">LIVRER LE COLIS</button>`;
     }
 
     function validerLivraison() {
@@ -378,21 +387,25 @@
         const opCode = document.getElementById('op-code').value;
         const clientCode = document.getElementById('final-delivery-code').value.trim().toUpperCase();
 
+        // 1. Vérification Opérateur
         const codeAttendu = (opType === 'admin') ? profile.code : (profile.collabo || "0000");
+        
         if (opCode !== codeAttendu) {
             alert("Erreur: Code OPÉRATEUR incorrect.");
             return;
         }
 
+        // 2. Vérification Code Client (Sécurité critique)
         if (clientCode === activeColis.code) {
             finaliserTransaction();
         } else {
             tentatives++;
             localStorage.setItem('bt_tentatives', tentatives);
+            
             if (tentatives >= MAX_TENTATIVES) {
                 localStorage.setItem('bt_locked', 'true');
                 alert("ALERTE : TENTATIVE DE RETRAIT FRAUDULEUX ! Système bloqué.");
-                location.reload();
+                verifierBlocage();
             } else {
                 alert(`CODE DE LIVRAISON INCORRECT ! Attention : ${MAX_TENTATIVES - tentatives} essai(s) restant(s) avant blocage.`);
             }
@@ -400,40 +413,30 @@
     }
 
     function finaliserTransaction() {
-        // Mise à jour Cloud-First
-        const updates = {
-            statut: "Livré",
-            receptionnaire: document.getElementById('res-dest-nom').value,
-            date_livraison: new Date().toLocaleString('fr-FR'),
-            operateur: document.getElementById('op-type').value
-        };
+        try {
+            // Re-synchronisation pour éviter les erreurs d'index ou de référence
+            db_colis = JSON.parse(localStorage.getItem('bt_colis_data') || "[]");
+            const index = db_colis.findIndex(c => c.id === activeColis.id);
+            
+            if (index !== -1) {
+                db_colis[index].statut = "Livré";
+                db_colis[index].receptionnaire = document.getElementById('res-dest-nom').value;
+                db_colis[index].date_livraison = new Date().toLocaleString('fr-FR');
+                db_colis[index].operateur = document.getElementById('op-type').value;
 
-        const specificColisRef = ref(db, `colis/${activeColis.fbKey}`);
-        update(specificColisRef, updates)
-            .then(() => {
+                localStorage.setItem('bt_colis_data', JSON.stringify(db_colis));
+                
+                // Appel du script de synchronisation cloud si présent
+                if(typeof forcePush === "function") forcePush();
+                
                 document.getElementById('delivery-success').style.display = 'flex';
                 if ("vibrate" in navigator) navigator.vibrate(200);
-            })
-            .catch(err => alert("Erreur de synchronisation Cloud : " + err.message));
-    }
-
-    // Gestion du verrouillage au chargement
-    if (localStorage.getItem('bt_locked') === 'true') {
-        document.querySelector('.container').innerHTML = `
-            <div class="text-center mt-5 p-4 bg-danger rounded">
-                <h2 class="fw-bold">SYSTÈME BLOQUÉ 🔒</h2>
-                <p>Trop de tentatives frauduleuses détectées.</p>
-                <input type="password" id="unlock-code" class="form-control mb-2" placeholder="Code ADMIN pour débloquer">
-                <button class="btn btn-light w-100" id="btn-unlock">DÉBLOQUER</button>
-            </div>`;
-        document.getElementById('btn-unlock').onclick = () => {
-            const profile = JSON.parse(localStorage.getItem('bt_profile') || '{"code":"1234"}');
-            if (document.getElementById('unlock-code').value === profile.code) {
-                localStorage.setItem('bt_locked', 'false');
-                localStorage.setItem('bt_tentatives', '0');
-                location.reload();
-            } else { alert("Code incorrect !"); }
-        };
+            } else {
+                throw new Error("Colis non trouvé dans la base.");
+            }
+        } catch (err) {
+            alert("Erreur lors de l'enregistrement final : " + err.message);
+        }
     }
 
     document.addEventListener('click', (e) => {
