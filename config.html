@@ -8,19 +8,6 @@
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;700&family=Righteous&display=swap" rel="stylesheet">
     
-    <script>
-        // --- CONSEIL D'EXPERT : PROTECTION ACCÈS DIRECT ---
-        // Vérification sommaire à l'entrée de la page pour bloquer le contournement par URL
-        if (!sessionStorage.getItem('admin_authenticated')) {
-            const pin = prompt("Accès restreint. Code PIN :");
-            if (pin === "1234") {
-                sessionStorage.setItem('admin_authenticated', 'true');
-            } else {
-                window.location.href = "index.html";
-            }
-        }
-    </script>
-
     <style>
         :root {
             --gozem-green: #00D18B;
@@ -79,7 +66,7 @@
             border-bottom: 2px solid var(--gozem-green);
         }
 
-        .sidebar.active { max-height: 450px; }
+        .sidebar.active { max-height: 400px; }
 
         .nav-link-custom {
             padding: 15px 25px;
@@ -252,8 +239,7 @@
             <a href="index.html" class="nav-link-custom">🏠 Tableau de bord</a>
             <a href="reception.html" class="nav-link-custom">📥 Réception Colis</a>
             <a href="livraison.html" class="nav-link-custom">📤 Livraison (Code)</a>
-            <a href="inventaire.html" class="nav-link-custom">📋 Inventaire</a>
-            <a href="#" onclick="if(verifyAdmin()) location.href='config.html'" class="nav-link-custom">⚙️ Configuration</a>
+            <a href="config.html" class="nav-link-custom">⚙️ Configuration</a>
         </nav>
     </div>
 
@@ -352,9 +338,7 @@
         </div>
     </div>
 </div>
-</div>
-
-<div id="success-overlay" onclick="hideSuccess()">
+</div> <div id="success-overlay" onclick="hideSuccess()">
     <div class="text-center text-white p-4">
         <div class="mb-4">
             <svg xmlns="http://www.w3.org/2000/svg" width="100" height="100" fill="currentColor" class="bi bi-check-circle-fill" viewBox="0 0 16 16">
@@ -366,79 +350,29 @@
     </div>
 </div>
 
-<script type="module">
-    import { initializeApp } from "https://www.gstatic.com/firebasejs/12.11.0/firebase-app.js";
-    import { getDatabase, ref, set, onValue, push } from "https://www.gstatic.com/firebasejs/12.11.0/firebase-database.js";
-
-    const firebaseConfig = {
-        apiKey: "AIzaSyDIOT3eym4lqX0wPNKIFwwuKGzjlofyaPM",
-        authDomain: "barthelemy-transport.firebaseapp.com",
-        databaseURL: "https://barthelemy-transport-default-rtdb.europe-west1.firebasedatabase.app/",
-        projectId: "barthelemy-transport",
-        storageBucket: "barthelemy-transport.firebasestorage.app",
-        messagingSenderId: "430598535240",
-        appId: "1:430598535240:web:6261039803e0ae7be4407d"
-    };
-
-    const app = initializeApp(firebaseConfig);
-    const db = getDatabase(app);
-
-    // --- LOGIQUE ADMIN PIN ---
-    const ADMIN_PIN = "1234"; 
-
-    window.verifyAdmin = function() {
-        const input = prompt("Entrez le code PIN Administrateur :");
-        if (input === ADMIN_PIN) {
-            return true;
-        } else {
-            alert("Code PIN incorrect. Accès refusé.");
-            return false;
-        }
-    };
-
-    // --- LOGIQUE CLOUD-FIRST POUR CONFIGURATION ---
-    const profileRef = ref(db, 'config/profile');
-    onValue(profileRef, (snapshot) => {
-        const data = snapshot.val();
-        if(data) {
-            localStorage.setItem('bt_profile', JSON.stringify(data));
-            document.getElementById('user-name').value = data.name || "Barthélémy";
-            document.getElementById('user-tel').value = data.tel || "0148554250";
-            document.getElementById('secure-code').value = data.code || "1234";
-        }
-    });
-
-    const locRef = ref(db, 'config/localites');
-    onValue(locRef, (snapshot) => {
-        const list = snapshot.val() || [];
-        localStorage.setItem('bt_localites', JSON.stringify(list));
-        loadLocalites();
-    });
-
-    const collRef = ref(db, 'config/collabos');
-    onValue(collRef, (snapshot) => {
-        const list = snapshot.val() || [];
-        localStorage.setItem('bt_collabos', JSON.stringify(list));
-        loadCollabos();
-    });
-
-    window.saveProfileToCloud = (data) => set(ref(db, 'config/profile'), data);
-    window.saveLocalitesToCloud = (data) => set(ref(db, 'config/localites'), data);
-    window.saveCollabosToCloud = (data) => set(ref(db, 'config/collabos'), data);
-</script>
-
+<script src="sync.js"></script>
 <script>
     let isLocked = true;
 
     document.addEventListener('DOMContentLoaded', () => {
-        // Le wrapper ne s'affiche que si sessionStorage est valide (déjà géré par le script du head)
-        if (sessionStorage.getItem('admin_authenticated') === 'true') {
+        checkAdminAccess();
+    });
+
+    // --- Sécurité : Demande de code ADMIN avant affichage ---
+    function checkAdminAccess() {
+        const profile = JSON.parse(localStorage.getItem('bt_profile') || '{"code":"1234"}');
+        const entry = prompt("Accès Restreint : Saisissez le code ADMIN pour accéder à la configuration :");
+        
+        if (entry === profile.code) {
             document.getElementById('main-wrapper').style.display = 'block';
             loadLocalites();
             loadCollabos();
             applyLockState();
+        } else {
+            alert("⚠️ Accès refusé. Code incorrect.");
+            window.location.href = "index.html"; // Redirection si erreur
         }
-    });
+    }
 
     function toggleSidebar() {
         document.getElementById('sidebar').classList.toggle('active');
@@ -470,29 +404,40 @@
             btnToggle.innerText = "VERROUILLER & ENREGISTRER 🔒";
             btnToggle.className = "btn btn-danger btn-lock-red w-100 fw-bold shadow";
         }
+        loadLocalites(); 
+        loadCollabos();
     }
 
     function handleLockToggle() {
         const profile = JSON.parse(localStorage.getItem('bt_profile') || '{"code":"1234"}');
+        const correctCode = profile.code;
+
         if (isLocked) {
             const entry = prompt("Veuillez saisir le code ADMIN pour modifier :");
-            if (entry === profile.code) {
+            if (entry === correctCode) {
                 isLocked = false;
                 applyLockState();
-            } else if (entry !== null) alert("Code incorrect !");
+            } else if (entry !== null) {
+                alert("Code incorrect !");
+            }
         } else {
-            const data = {
-                name: document.getElementById('user-name').value,
-                tel: document.getElementById('user-tel').value,
-                code: document.getElementById('secure-code').value
-            };
-            if(window.saveProfileToCloud) window.saveProfileToCloud(data);
+            saveProfile();
             isLocked = true;
             applyLockState();
-            showSuccess("Paramètres enregistrés sur le Cloud.");
+            showSuccess("Paramètres enregistrés et verrouillés.");
         }
     }
 
+    function saveProfile() {
+        const data = {
+            name: document.getElementById('user-name').value,
+            tel: document.getElementById('user-tel').value,
+            code: document.getElementById('secure-code').value
+        };
+        localStorage.setItem('bt_profile', JSON.stringify(data));
+    }
+
+    // --- Logique Localités ---
     function addLocalite() {
         if (isLocked) return;
         const input = document.getElementById('loc-input');
@@ -501,80 +446,118 @@
         
         vals.forEach(v => {
             const trimmed = v.trim();
-            if (trimmed && !list.includes(trimmed)) list.push(trimmed);
+            if (trimmed && !list.includes(trimmed)) {
+                list.push(trimmed);
+            }
         });
         
-        if(window.saveLocalitesToCloud) window.saveLocalitesToCloud(list);
+        localStorage.setItem('bt_localites', JSON.stringify(list));
         input.value = '';
-        showSuccess("Localité(s) synchronisée(s) !", true);
+        loadLocalites();
+        showSuccess("Localité(s) ajoutée(s) !", true);
     }
 
     function loadLocalites() {
         const tbody = document.getElementById('localites-tbody');
         const list = JSON.parse(localStorage.getItem('bt_localites') || "[]");
-        if(!tbody) return;
         tbody.innerHTML = '';
+        
         list.forEach((loc, index) => {
             const row = tbody.insertRow();
-            row.innerHTML = `<td>${loc}</td><td class="text-end"><button class="btn-del-row ${isLocked ? 'disabled-action' : ''}" onclick="deleteItem('bt_localites', ${index}, 'cette localité')">Supprimer</button></td>`;
+            row.innerHTML = `
+                <td>${loc}</td>
+                <td class="text-end">
+                    <button class="btn-del-row ${isLocked ? 'disabled-action' : ''}" onclick="deleteItem('bt_localites', ${index}, 'cette localité')">Supprimer</button>
+                </td>
+            `;
         });
     }
 
+    // --- Logique Collaborateurs ---
     function addCollabo() {
         if (isLocked) return;
         const nom = document.getElementById('collab-nom').value.trim();
         const tel = document.getElementById('collab-tel').value.trim();
         const code = document.getElementById('collab-code').value.trim();
-        if (!nom || !tel || !code) return alert("Champs vides !");
+
+        if (!nom || !tel || !code) {
+            alert("Veuillez remplir tous les champs du collaborateur.");
+            return;
+        }
 
         let list = JSON.parse(localStorage.getItem('bt_collabos') || "[]");
         list.push({ nom, tel, code });
-        if(window.saveCollabosToCloud) window.saveCollabosToCloud(list);
+        
+        localStorage.setItem('bt_collabos', JSON.stringify(list));
         
         document.getElementById('collab-nom').value = '';
         document.getElementById('collab-tel').value = '';
         document.getElementById('collab-code').value = '';
-        showSuccess("Collaborateur synchronisé !", true);
+        
+        loadCollabos();
+        showSuccess("Collaborateur enregistré !", true);
     }
 
     function loadCollabos() {
         const tbody = document.getElementById('collabos-tbody');
         const list = JSON.parse(localStorage.getItem('bt_collabos') || "[]");
-        if(!tbody) return;
         tbody.innerHTML = '';
+        
         list.forEach((c, index) => {
             const row = tbody.insertRow();
-            row.innerHTML = `<td><strong>${c.nom}</strong><br><small>${c.tel}</small></td><td><span class="code-collab-masked" onclick="revealCode(${index}, this)">••••••</span></td><td class="text-end"><button class="btn-del-row ${isLocked ? 'disabled-action' : ''}" onclick="deleteItem('bt_collabos', ${index}, 'ce collaborateur')">Supprimer</button></td>`;
+            row.innerHTML = `
+                <td><strong>${c.nom}</strong><br><small>${c.tel}</small></td>
+                <td><span class="code-collab-masked" onclick="revealCode(${index}, this)">••••••</span></td>
+                <td class="text-end">
+                    <button class="btn-del-row ${isLocked ? 'disabled-action' : ''}" onclick="deleteItem('bt_collabos', ${index}, 'ce collaborateur')">Supprimer</button>
+                </td>
+            `;
         });
     }
 
     function revealCode(index, element) {
         const profile = JSON.parse(localStorage.getItem('bt_profile') || '{"code":"1234"}');
-        const entry = prompt("Code ADMIN requis :");
+        const entry = prompt("Veuillez saisir le code ADMIN pour voir ce code :");
+        
         if (entry === profile.code) {
             const list = JSON.parse(localStorage.getItem('bt_collabos') || "[]");
-            element.innerText = list[index].code;
-            element.style.letterSpacing = "normal";
-            setTimeout(() => { element.innerText = "••••••"; element.style.letterSpacing = "2px"; }, 5000);
+            if (list[index]) {
+                element.innerText = list[index].code;
+                element.style.letterSpacing = "normal";
+                setTimeout(() => {
+                    element.innerText = "••••••";
+                    element.style.letterSpacing = "2px";
+                }, 5000);
+            }
+        } else if (entry !== null) {
+            alert("Code incorrect !");
         }
     }
 
     function deleteItem(key, index, label) {
         if (isLocked) return;
         const profile = JSON.parse(localStorage.getItem('bt_profile') || '{"code":"1234"}');
-        if (prompt(`Confirmez suppression ${label} (Code ADMIN) :`) === profile.code) {
+        const entry = prompt(`Confirmez avec le code ADMIN pour supprimer ${label} :`);
+        
+        if (entry === profile.code) {
             let list = JSON.parse(localStorage.getItem(key) || "[]");
             list.splice(index, 1);
-            if(key === 'bt_localites' && window.saveLocalitesToCloud) window.saveLocalitesToCloud(list);
-            if(key === 'bt_collabos' && window.saveCollabosToCloud) window.saveCollabosToCloud(list);
+            localStorage.setItem(key, JSON.stringify(list));
+            key === 'bt_localites' ? loadLocalites() : loadCollabos();
+        } else if (entry !== null) {
+            alert("Code incorrect !");
         }
     }
 
     function toggleListe(id, btn) {
         const container = document.getElementById(id);
-        const isHidden = container.style.display === 'none';
-        container.style.display = isHidden ? 'block' : 'none';
-        btn.innerText = isHidden ? 'MASQUER LA LISTE' : 'AFFICHER LA LISTE';
+        if (container.style.display === 'none') {
+            container.style.display = 'block';
+            btn.innerText = 'MASQUER LA LISTE';
+        } else {
+            container.style.display = 'none';
+            btn.innerText = 'AFFICHER LA LISTE';
+        }
     }
 
     document.querySelector('.container').addEventListener('click', () => {

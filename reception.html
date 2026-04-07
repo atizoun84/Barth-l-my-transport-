@@ -104,6 +104,7 @@
             padding: 12px;
         }
 
+        /* Style Terni pour les indications de saisie */
         .form-control-custom::placeholder {
             color: rgba(255, 255, 255, 0.3);
             font-style: italic;
@@ -193,6 +194,7 @@
 
         .badge-dest { background: rgba(0, 209, 139, 0.15); color: var(--gozem-green); font-size: 0.75rem; padding: 4px 8px; border-radius: 5px; }
 
+        /* Footer */
         .footer-mention { font-size: 0.7rem; color: rgba(255,255,255,0.4); text-align: center; margin-top: 30px; padding-bottom: 20px; }
     </style>
 </head>
@@ -331,55 +333,18 @@
     </div>
 </div>
 
-<script type="module">
-    import { initializeApp } from "https://www.gstatic.com/firebasejs/12.11.0/firebase-app.js";
-    import { getDatabase, ref, set, onValue, push, remove } from "https://www.gstatic.com/firebasejs/12.11.0/firebase-database.js";
-
-    const firebaseConfig = {
-        apiKey: "AIzaSyDIOT3eym4lqX0wPNKIFwwuKGzjlofyaPM",
-        authDomain: "barthelemy-transport.firebaseapp.com",
-        databaseURL: "https://barthelemy-transport-default-rtdb.europe-west1.firebasedatabase.app/",
-        projectId: "barthelemy-transport",
-        storageBucket: "barthelemy-transport.firebasestorage.app",
-        messagingSenderId: "430598535240",
-        appId: "1:430598535240:web:6261039803e0ae7be4407d"
-    };
-
-    const app = initializeApp(firebaseConfig);
-    const db = getDatabase(app);
-
-    const colisRef = ref(db, 'colis');
-    onValue(colisRef, (snapshot) => {
-        const data = snapshot.val();
-        // Transformation de l'objet Firebase en tableau avec préservation de la clé
-        const list = data ? Object.keys(data).map(key => ({...data[key], firebaseId: key})) : [];
-        // Tri par date inverse pour l'affichage des récents
-        list.reverse();
-        db_colis = list;
-        localStorage.setItem('bt_colis_data', JSON.stringify(list));
-        
-        if (typeof renderAll === "function") renderAll();
-    });
-
-    window.saveColisToCloud = function(colisData) {
-        const newColisRef = push(ref(db, 'colis'));
-        return set(newColisRef, colisData);
-    };
-
-    window.deleteColisFromCloud = function(firebaseId) {
-        return remove(ref(db, `colis/${firebaseId}`));
-    };
-</script>
-
+<script src="sync.js"></script>
 <script>
     let db_colis = [];
     let currentCode = "";
     let currentColis = null;
     const form = document.getElementById('reception-form');
 
+    // Initialisation optimisée pour éviter la lenteur
     document.addEventListener('DOMContentLoaded', () => {
         const data = localStorage.getItem('bt_colis_data');
         db_colis = data ? JSON.parse(data) : [];
+        
         loadVilles();
         renderAll();
     });
@@ -402,6 +367,7 @@
             let opt1 = document.createElement('option');
             opt1.value = v; opt1.innerText = v;
             selectExp.appendChild(opt1);
+            
             let opt2 = document.createElement('option');
             opt2.value = v; opt2.innerText = v;
             selectDest.appendChild(opt2);
@@ -423,8 +389,9 @@
         return "T" + timestamp.slice(-4) + suffix; 
     }
 
-    form.addEventListener('submit', async (e) => {
+    form.addEventListener('submit', (e) => {
         e.preventDefault();
+        
         try {
             const codeRetrait = generateAlphanumericCode(6);
             const codeEtiquette = generateUniqueLabel();
@@ -453,23 +420,22 @@
             };
 
             currentColis = nouveauColis;
+            db_colis.unshift(nouveauColis);
+            localStorage.setItem('bt_colis_data', JSON.stringify(db_colis));
             
-            // Sauvegarde Cloud-First
-            if(typeof saveColisToCloud === "function") {
-                await saveColisToCloud(nouveauColis);
-            }
-
             showSuccess(codeRetrait, codeEtiquette, nbEmballages);
             form.reset();
+            renderAll();
+            
+            if(typeof forcePush === "function") forcePush();
         } catch (err) {
-            console.error(err);
-            alert("Erreur lors de l'enregistrement cloud.");
+            alert("Erreur lors de l'enregistrement.");
         }
     });
 
     function renderAll() {
         const container = document.getElementById('liste-reception');
-        if (!db_colis || db_colis.length === 0) {
+        if (db_colis.length === 0) {
             container.innerHTML = `<p class="text-center small text-secondary py-3">Aucun colis enregistré.</p>`;
             return;
         }
@@ -486,7 +452,7 @@
                     <div class="text-end">
                         <span class="badge-dest">${c.dest.ville}</span>
                         <div class="small mt-2 fw-bold text-success">${c.prix} FCFA</div>
-                        <button class="btn-delete-colis mt-2" onclick="event.stopPropagation(); deleteColis('${c.firebaseId}')">Supprimer</button>
+                        <button class="btn-delete-colis mt-2" onclick="event.stopPropagation(); deleteColis('${c.id}')">Supprimer</button>
                     </div>
                 </div>
             </div>
@@ -503,16 +469,17 @@
         }
     }
 
-    async function deleteColis(firebaseId) {
+    function deleteColis(id) {
         const profile = JSON.parse(localStorage.getItem('bt_profile') || '{"code":"1234"}');
         const entry = prompt("Saisissez le code ADMIN pour supprimer :");
         if (entry === profile.code) {
-            if(typeof deleteColisFromCloud === "function") {
-                await deleteColisFromCloud(firebaseId);
-                const tempOverlay = document.getElementById('temp-success-overlay');
-                tempOverlay.style.display = 'flex';
-                setTimeout(() => { tempOverlay.style.display = 'none'; }, 1500);
-            }
+            db_colis = db_colis.filter(c => c.id !== id);
+            localStorage.setItem('bt_colis_data', JSON.stringify(db_colis));
+            const tempOverlay = document.getElementById('temp-success-overlay');
+            tempOverlay.style.display = 'flex';
+            setTimeout(() => { tempOverlay.style.display = 'none'; }, 1500);
+            renderAll();
+            if(typeof forcePush === "function") forcePush();
         } else if (entry !== null) alert("Code ADMIN incorrect !");
     }
 

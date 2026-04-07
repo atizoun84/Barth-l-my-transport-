@@ -219,7 +219,7 @@
             <a href="reception.html" class="nav-link-custom">📥 Réception Colis</a>
             <a href="livraison.html" class="nav-link-custom">📤 Livraison (Code)</a>
             <a href="inventaire.html" class="nav-link-custom">📋 Inventaire des colis</a>
-            <a href="#" onclick="if(window.verifyAdmin()) location.href='config.html'" class="nav-link-custom">⚙️ Configuration</a>
+            <a href="config.html" class="nav-link-custom">⚙️ Configuration</a>
         </nav>
     </div>
 
@@ -333,108 +333,34 @@
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
-
-<script type="module">
-    import { initializeApp } from "https://www.gstatic.com/firebasejs/12.11.0/firebase-app.js";
-    import { getDatabase, ref, set, onValue, push, remove } from "https://www.gstatic.com/firebasejs/12.11.0/firebase-database.js";
-
-    const firebaseConfig = {
-        apiKey: "AIzaSyDIOT3eym4lqX0wPNKIFwwuKGzjlofyaPM",
-        authDomain: "barthelemy-transport.firebaseapp.com",
-        databaseURL: "https://barthelemy-transport-default-rtdb.europe-west1.firebasedatabase.app/",
-        projectId: "barthelemy-transport",
-        storageBucket: "barthelemy-transport.firebasestorage.app",
-        messagingSenderId: "430598535240",
-        appId: "1:430598535240:web:6261039803e0ae7be4407d"
-    };
-
-    const app = initializeApp(firebaseConfig);
-    const db = getDatabase(app);
-
-    // --- LOGIQUE CLOUD-FIRST ---
-    const ADMIN_PIN = "1234";
-
-    window.verifyAdmin = function() {
-        if (sessionStorage.getItem('admin_authenticated') === 'true') return true;
-        
-        const input = prompt("Entrez le code PIN Administrateur :");
-        if (input === ADMIN_PIN) {
-            sessionStorage.setItem('admin_authenticated', 'true');
-            return true;
-        } else {
-            alert("Code PIN incorrect. Accès refusé.");
-            return false;
-        }
-    };
-
-    // Écouter les Colis
-    const colisRef = ref(db, 'colis');
-    onValue(colisRef, (snapshot) => {
-        const data = snapshot.val();
-        window.db_colis = data ? Object.values(data) : [];
-        localStorage.setItem('bt_colis_data', JSON.stringify(window.db_colis));
-        if (typeof window.renderAll === "function") window.renderAll();
-        if (typeof window.updateFinance === "function") window.updateFinance();
-    });
-
-    // Écouter les Retraits
-    const retraitsRef = ref(db, 'retraits');
-    onValue(retraitsRef, (snapshot) => {
-        const data = snapshot.val();
-        window.db_retraits = data ? Object.values(data) : [];
-        localStorage.setItem('bt_retraits_history', JSON.stringify(window.db_retraits));
-        if (typeof window.renderRetraits === "function") window.renderRetraits();
-        if (typeof window.updateFinance === "function") window.updateFinance();
-    });
-
-    // Fonctions Globales pour le Cloud
-    window.saveColisToCloud = function(colisData) {
-        const newColisRef = push(ref(db, 'colis'));
-        colisData.id = newColisRef.key;
-        return set(newColisRef, colisData);
-    };
-
-    window.saveRetraitToCloud = function(retraitData) {
-        const newRetraitRef = push(ref(db, 'retraits'));
-        retraitData.id = newRetraitRef.key;
-        return set(newRetraitRef, retraitData);
-    };
-
-    window.deleteColisFromCloud = function(colisId) {
-        return remove(ref(db, `colis/${colisId}`));
-    };
-</script>
-
+<script src="sync.js"></script>
 <script>
-    window.db_colis = [];
-    window.db_retraits = [];
+    let db_colis = [];
+    let db_retraits = [];
 
     document.addEventListener('DOMContentLoaded', () => {
         verifierAccesAdmin();
     });
 
     function verifierAccesAdmin() {
-        if (sessionStorage.getItem('admin_authenticated') === 'true') {
-            document.getElementById('page-lock').style.display = 'none';
-            initInventory();
-            return;
-        }
+        const profile = JSON.parse(localStorage.getItem('bt_profile') || '{"code":"1234"}');
+        const code = prompt("🔒 ACCÈS RESTREINT\nVeuillez saisir le code ADMIN pour consulter l'inventaire :");
 
-        const pin = prompt("🔒 ACCÈS RESTREINT\nVeuillez saisir le code PIN ADMIN pour consulter l'inventaire :");
-        const correctPin = "1234"; // Consistent avec ADMIN_PIN
-
-        if (pin === correctPin) {
-            sessionStorage.setItem('admin_authenticated', 'true');
+        if (code === profile.code) {
             document.getElementById('page-lock').style.display = 'none';
             initInventory();
         } else {
-            alert("Code PIN incorrect. Accès refusé.");
-            window.location.href = "index.html";
+            alert("Accès refusé !");
+            window.location.href = "index.html"; // Redirection vers l'accueil
         }
     }
 
     function initInventory() {
+        syncData();
         loadFilterOptions();
+        updateFinance();
+        renderAll();
+        renderRetraits();
     }
 
     function toggleSidebar() {
@@ -451,6 +377,15 @@
         container.style.display = (container.style.display === 'none') ? 'block' : 'none';
     }
 
+    function syncData() {
+        try {
+            db_colis = JSON.parse(localStorage.getItem('bt_colis_data') || "[]");
+            db_retraits = JSON.parse(localStorage.getItem('bt_retraits_history') || "[]");
+        } catch (e) {
+            console.error("Erreur de synchronisation", e);
+        }
+    }
+
     function loadFilterOptions() {
         const selectVille = document.getElementById('filter-ville');
         const villes = JSON.parse(localStorage.getItem('bt_localites') || '["Parakou", "Glazoué", "Savè", "Dassa"]');
@@ -465,13 +400,13 @@
         let totalLivre = 0;
         let totalAttente = 0;
 
-        window.db_colis.forEach(c => {
+        db_colis.forEach(c => {
             const prix = parseFloat(c.prix) || 0;
             if (c.statut === "Livré") totalLivre += prix;
             else totalAttente += prix;
         });
 
-        const totalRetraits = window.db_retraits.reduce((sum, r) => sum + parseFloat(r.montant), 0);
+        const totalRetraits = db_retraits.reduce((sum, r) => sum + parseFloat(r.montant), 0);
         const soldeReel = totalLivre - totalRetraits;
 
         document.getElementById('solde-valeur').innerText = soldeReel.toLocaleString() + " FCFA";
@@ -483,9 +418,9 @@
         const montant = parseFloat(document.getElementById('retrait-montant').value);
         const motif = document.getElementById('retrait-motif').value;
         const codeInput = document.getElementById('retrait-admin-code').value;
-        const correctPin = "1234";
+        const profile = JSON.parse(localStorage.getItem('bt_profile') || '{"code":"1234"}');
 
-        if (codeInput !== correctPin) {
+        if (codeInput !== profile.code) {
             alert("Code ADMIN incorrect !");
             return;
         }
@@ -495,8 +430,8 @@
             return;
         }
 
-        const totalLivre = window.db_colis.filter(c => c.statut === "Livré").reduce((sum, c) => sum + parseFloat(c.prix), 0);
-        const totalRetraits = window.db_retraits.reduce((sum, r) => sum + parseFloat(r.montant), 0);
+        const totalLivre = db_colis.filter(c => c.statut === "Livré").reduce((sum, c) => sum + parseFloat(c.prix), 0);
+        const totalRetraits = db_retraits.reduce((sum, r) => sum + parseFloat(r.montant), 0);
         const soldeDisponible = totalLivre - totalRetraits;
 
         if (montant > soldeDisponible) {
@@ -505,28 +440,32 @@
         }
 
         const nouveauRetrait = {
+            id: Date.now(),
             date: new Date().toLocaleString('fr-FR'),
             montant: montant,
             motif: motif
         };
 
-        window.saveRetraitToCloud(nouveauRetrait);
+        db_retraits.unshift(nouveauRetrait);
+        localStorage.setItem('bt_retraits_history', JSON.stringify(db_retraits));
         
         bootstrap.Modal.getInstance(document.getElementById('modalRetrait')).hide();
         document.getElementById('retrait-montant').value = "";
         document.getElementById('retrait-motif').value = "";
         document.getElementById('retrait-admin-code').value = "";
         
-        alert("Retrait enregistré sur le Cloud !");
+        updateFinance();
+        renderRetraits();
+        alert("Retrait enregistré !");
     }
 
     function renderRetraits() {
         const container = document.getElementById('retrait-list');
-        if (window.db_retraits.length === 0) {
+        if (db_retraits.length === 0) {
             container.innerHTML = `<p class="text-center small opacity-50">Aucun retrait effectué.</p>`;
             return;
         }
-        container.innerHTML = window.db_retraits.map(r => `
+        container.innerHTML = db_retraits.map(r => `
             <div class="history-item d-flex justify-content-between">
                 <div>
                     <span class="text-white-50">${r.date}</span><br>
@@ -545,12 +484,12 @@
         const fVille = document.getElementById('filter-ville').value;
         const fStatut = document.getElementById('filter-statut').value;
 
-        const filtered = window.db_colis.filter(c => {
-            const matchesSearch = (c.dest?.nom || "").toLowerCase().includes(search) || 
-                                 (c.exp?.nom || "").toLowerCase().includes(search) || 
-                                 (c.id || "").toLowerCase().includes(search) ||
-                                 (c.etiquette || "").toLowerCase().includes(search);
-            const matchesVille = fVille === "" || c.dest?.ville === fVille;
+        const filtered = db_colis.filter(c => {
+            const matchesSearch = c.dest.nom.toLowerCase().includes(search) || 
+                                 c.exp.nom.toLowerCase().includes(search) || 
+                                 c.id.toLowerCase().includes(search) ||
+                                 c.etiquette.toLowerCase().includes(search);
+            const matchesVille = fVille === "" || c.dest.ville === fVille;
             const matchesStatut = fStatut === "" || c.statut === fStatut;
             return matchesSearch && matchesVille && matchesStatut;
         });
@@ -573,8 +512,8 @@
                 </div>
                 <div class="row g-0 align-items-center">
                     <div class="col-8">
-                        <div class="small"><b class="text-white-50">De:</b> ${c.exp?.nom}</div>
-                        <div class="small"><b class="text-white-50">Vers:</b> ${c.dest?.nom} (${c.dest?.ville})</div>
+                        <div class="small"><b class="text-white-50">De:</b> ${c.exp.nom}</div>
+                        <div class="small"><b class="text-white-50">Vers:</b> ${c.dest.nom} (${c.dest.ville})</div>
                         <div class="small mt-1 text-info italic">📦 ${c.desc || 'Sans description'}</div>
                     </div>
                     <div class="col-4 text-end">
@@ -589,17 +528,19 @@
     }
 
     function deleteColisSecure(id) {
-        const entry = prompt("Saisissez le code ADMIN pour supprimer ce colis du Cloud :");
-        const correctPin = "1234";
+        const profile = JSON.parse(localStorage.getItem('bt_profile') || '{"code":"1234"}');
+        const entry = prompt("Saisissez le code ADMIN pour supprimer ce colis :");
 
-        if (entry === correctPin) {
-            window.deleteColisFromCloud(id).then(() => {
-                const overlay = document.getElementById('delete-overlay');
-                overlay.style.display = 'flex';
-                setTimeout(() => {
-                    overlay.style.display = 'none';
-                }, 1200);
-            });
+        if (entry === profile.code) {
+            db_colis = db_colis.filter(c => c.id !== id);
+            localStorage.setItem('bt_colis_data', JSON.stringify(db_colis));
+            
+            const overlay = document.getElementById('delete-overlay');
+            overlay.style.display = 'flex';
+            setTimeout(() => {
+                overlay.style.display = 'none';
+                initInventory();
+            }, 1200);
         } else if (entry !== null) {
             alert("⚠️ Code incorrect.");
         }
@@ -608,7 +549,7 @@
     document.addEventListener('click', (e) => {
         const sidebar = document.getElementById('sidebar');
         const burger = document.querySelector('.burger-icon');
-        if (sidebar?.classList.contains('active') && !sidebar.contains(e.target) && !burger.contains(e.target)) {
+        if (sidebar.classList.contains('active') && !sidebar.contains(e.target) && !burger.contains(e.target)) {
             sidebar.classList.remove('active');
         }
     });
