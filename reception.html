@@ -32,15 +32,18 @@
             width: 100%;
         }
 
-        /* --- Header & Sidebar (Héritage) --- */
+        /* --- Header & Sidebar --- */
         .navbar-custom {
             background-color: var(--gozem-dark);
             border-bottom: 2px solid var(--gozem-green);
             padding: 10px 15px;
+            position: sticky;
+            top: 0;
+            z-index: 1100;
         }
 
         .burger-icon {
-            font-size: 1.8rem;
+            font-size: 1.5rem;
             color: var(--gozem-green);
             cursor: pointer;
             border: none;
@@ -50,8 +53,8 @@
         .sidebar {
             width: 100%;
             max-height: 0;
-            position: absolute;
-            top: 72px;
+            position: fixed;
+            top: 65px;
             left: 0;
             background: var(--gozem-dark);
             transition: max-height 0.4s ease-in-out;
@@ -64,11 +67,11 @@
         .sidebar.active { max-height: 450px; }
 
         .nav-link-custom {
-            padding: 15px 25px;
+            padding: 12px 25px;
             color: white;
             text-decoration: none;
             display: block;
-            font-size: 1.1rem;
+            font-size: 1rem;
             border-bottom: 1px solid var(--border-light);
             text-align: center;
         }
@@ -77,14 +80,27 @@
 
         .app-title {
             font-family: 'Righteous', cursive;
-            font-size: 1.1rem;
+            font-size: 0.9rem;
             color: var(--text-white);
             text-transform: uppercase;
+            line-height: 1.2;
         }
 
-        .sub-title-header { font-size: 0.75rem; color: var(--gozem-green); display: block; font-weight: 400; }
+        .sub-title-header { font-size: 0.65rem; color: var(--gozem-green); display: block; font-weight: 400; }
 
-        .header-logo { width: 50px; height: auto; border-radius: 5px; }
+        .header-logo { width: 40px; height: auto; border-radius: 5px; }
+
+        /* Status Toast Style */
+        #connection-status {
+            font-size: 0.65rem;
+            padding: 4px 10px;
+            border-radius: 20px;
+            font-weight: bold;
+            text-transform: uppercase;
+            transition: 0.3s;
+        }
+        .status-online { background: rgba(0, 209, 139, 0.2); color: #00D18B; border: 1px solid #00D18B; }
+        .status-offline { background: rgba(255, 77, 77, 0.2); color: #FF4D4D; border: 1px solid #FF4D4D; }
 
         /* --- Formulaire & Cartes --- */
         .stat-card {
@@ -104,7 +120,6 @@
             padding: 12px;
         }
 
-        /* Style Terni pour les indications de saisie */
         .form-control-custom::placeholder {
             color: rgba(255, 255, 255, 0.3);
             font-style: italic;
@@ -154,7 +169,6 @@
             cursor: pointer;
             transition: 0.3s;
         }
-        .btn-delete-colis:hover { background: #ff4444; color: white; }
 
         /* --- UI Components --- */
         #success-overlay {
@@ -169,14 +183,6 @@
             backdrop-filter: blur(10px);
         }
 
-        #success-code-display {
-            cursor: pointer;
-            background: rgba(0,0,0,0.1);
-            padding: 10px;
-            border-radius: 8px;
-            border: 1px dashed black;
-        }
-
         #temp-success-overlay {
             display: none;
             position: fixed;
@@ -187,14 +193,10 @@
             justify-content: center;
             align-items: center;
             backdrop-filter: blur(5px);
-            animation: fadeIn 0.3s ease;
         }
-
-        @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
 
         .badge-dest { background: rgba(0, 209, 139, 0.15); color: var(--gozem-green); font-size: 0.75rem; padding: 4px 8px; border-radius: 5px; }
 
-        /* Footer */
         .footer-mention { font-size: 0.7rem; color: rgba(255,255,255,0.4); text-align: center; margin-top: 30px; padding-bottom: 20px; }
     </style>
 </head>
@@ -204,12 +206,13 @@
     <nav class="navbar-custom d-flex align-items-center justify-content-between">
         <div class="d-flex align-items-center">
             <button class="burger-icon" onclick="toggleSidebar()">☰</button>
-            <img src="logo maison.png" alt="Logo" class="header-logo ms-2">
+            <img src="logo app.png" alt="Logo" class="header-logo ms-2">
             <div class="app-title ms-2">
                 BARTHÉLÉMY TRANSPORT
                 <span class="sub-title-header">Service des colis • Réception</span>
             </div>
         </div>
+        <div id="connection-status" class="status-online">En ligne</div>
     </nav>
 
     <div class="sidebar" id="sidebar">
@@ -284,15 +287,15 @@
             <button class="btn btn-sm btn-outline-light border-0" onclick="toggleJournal()">Afficher/Masquer</button>
         </div>
         
-        <div id="journal-container" style="display: block;">
+        <div id="journal-container">
             <div id="liste-reception">
-                <p class="text-center small text-secondary py-3">Chargement...</p>
+                <p class="text-center small text-secondary py-3">Chargement des données cloud...</p>
             </div>
         </div>
 
         <div class="footer-mention">
             BARTHÉLÉMY TRANSPORT • Système Sécurisé de Gestion de Colis<br>
-            Version PWA 2.0 • 2026
+            Version Cloud PWA 2.0 • 2026
         </div>
     </div>
 </div>
@@ -305,18 +308,14 @@
             </svg>
         </div>
         <h4 class="fw-bold mb-1">COLIS ENREGISTRÉ !</h4>
-        
-        <div class="bg-light p-3 rounded mb-3 border">
+        <div class="bg-light p-3 rounded mb-3 border text-center">
             <p class="small mb-1 text-secondary">🏷️ CODE ÉTIQUETTE (À écrire sur les <span id="label-count">1</span> colis)</p>
             <div id="success-label-display" class="fs-3 fw-bold text-primary mb-2">---</div>
             <p class="small mb-1 text-secondary">🔐 CODE DE RETRAIT (Confidentiel)</p>
-            <div id="success-code-display" class="fs-5 fw-bold" onclick="copyCode()" style="cursor:pointer">----</div>
+            <div id="success-code-display" class="fs-5 fw-bold" onclick="copyCode()" style="cursor:pointer; background:rgba(0,0,0,0.05); padding:5px; border-radius:5px;">----</div>
         </div>
-        
         <div class="d-grid gap-2">
-            <button class="btn btn-success fw-bold py-3" onclick="shareWhatsApp()">
-                PARTAGER SUR WHATSAPP 📱
-            </button>
+            <button class="btn btn-success fw-bold py-3" onclick="shareWhatsApp()">PARTAGER SUR WHATSAPP 📱</button>
             <button class="btn btn-dark fw-bold py-2" onclick="hideSuccess()">FERMER</button>
         </div>
     </div>
@@ -325,7 +324,7 @@
 <div id="temp-success-overlay">
     <div class="text-center">
         <div class="mb-3" style="color: var(--gozem-green);">
-            <svg xmlns="http://www.w3.org/2000/svg" width="100" height="100" fill="currentColor" viewBox="0 0 16 16">
+            <svg xmlns="http://www.w3.org/2000/svg" width="80" height="80" fill="currentColor" viewBox="0 0 16 16">
                 <path d="M16 8A8 8 0 1 1 0 8a8 8 0 0 1 16 0m-3.97-3.03a.75.75 0 0 0-1.08.022L7.477 9.417 5.384 7.323a.75.75 0 0 0-1.06 1.06L6.97 11.03a.75.75 0 0 0 1.079-.02l3.992-4.99a.75.75 0 0 0-.01-1.05z"/>
             </svg>
         </div>
@@ -333,103 +332,113 @@
     </div>
 </div>
 
-<script src="sync.js"></script>
-<script>
+<script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/12.11.0/firebase-app.js";
+    import { getDatabase, ref, set, push, onValue, remove, get } from "https://www.gstatic.com/firebasejs/12.11.0/firebase-database.js";
+
+    const firebaseConfig = {
+        apiKey: "AIzaSyDIOT3eym4lqX0wPNKIFwwuKGzjlofyaPM",
+        authDomain: "barthelemy-transport.firebaseapp.com",
+        databaseURL: "https://barthelemy-transport-default-rtdb.europe-west1.firebasedatabase.app",
+        projectId: "barthelemy-transport",
+        storageBucket: "barthelemy-transport.firebasestorage.app",
+        messagingSenderId: "430598535240",
+        appId: "1:430598535240:web:6261039803e0ae7be4407d"
+    };
+
+    const app = initializeApp(firebaseConfig);
+    const db = getDatabase(app);
+    const dbRef = ref(db, 'colis');
+    const localRef = ref(db, 'localites');
+
     let db_colis = [];
     let currentCode = "";
     let currentColis = null;
-    const form = document.getElementById('reception-form');
 
-    // Initialisation optimisée pour éviter la lenteur
-    document.addEventListener('DOMContentLoaded', () => {
-        const data = localStorage.getItem('bt_colis_data');
-        db_colis = data ? JSON.parse(data) : [];
-        
-        loadVilles();
+    // --- Monitoring Connexion ---
+    const statusEl = document.getElementById('connection-status');
+    const connectedRef = ref(db, '.info/connected');
+    onValue(connectedRef, (snap) => {
+        if (snap.val() === true) {
+            statusEl.innerText = "En ligne";
+            statusEl.className = "status-online";
+        } else {
+            statusEl.innerText = "Hors ligne";
+            statusEl.className = "status-offline";
+        }
+    });
+
+    // --- Chargement des données ---
+    onValue(dbRef, (snapshot) => {
+        const data = snapshot.val();
+        db_colis = data ? Object.values(data).reverse() : [];
+        localStorage.setItem('bt_colis_data', JSON.stringify(db_colis));
         renderAll();
     });
 
-    function toggleSidebar() {
-        document.getElementById('sidebar').classList.toggle('active');
-    }
+    onValue(localRef, (snapshot) => {
+        const villes = snapshot.val() || ["Parakou", "Glazoué", "Savè", "Dassa"];
+        localStorage.setItem('bt_localites', JSON.stringify(villes));
+        loadVilles(villes);
+    });
 
-    function toggleJournal() {
-        const container = document.getElementById('journal-container');
-        container.style.display = (container.style.display === 'none') ? 'block' : 'none';
-    }
-
-    function loadVilles() {
+    function loadVilles(villes) {
         const selectExp = document.getElementById('exp-ville');
         const selectDest = document.getElementById('dest-ville');
-        const villes = JSON.parse(localStorage.getItem('bt_localites') || '["Parakou", "Glazoué", "Savè", "Dassa"]');
+        selectExp.innerHTML = '<option value="">Ville...</option>';
+        selectDest.innerHTML = '<option value="">Ville...</option>';
         
         villes.forEach(v => {
-            let opt1 = document.createElement('option');
-            opt1.value = v; opt1.innerText = v;
+            let opt1 = document.createElement('option'); opt1.value = v; opt1.innerText = v;
             selectExp.appendChild(opt1);
-            
-            let opt2 = document.createElement('option');
-            opt2.value = v; opt2.innerText = v;
+            let opt2 = document.createElement('option'); opt2.value = v; opt2.innerText = v;
             selectDest.appendChild(opt2);
         });
     }
 
-    function generateAlphanumericCode(length = 6) {
-        const chars = '0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ';
-        let result = '';
-        for (let i = 0; i < length; i++) {
-            result += chars.charAt(Math.floor(Math.random() * chars.length));
-        }
-        return result;
-    }
-
-    function generateUniqueLabel() {
-        const timestamp = Date.now().toString();
-        const suffix = Math.floor(Math.random() * 100).toString().padStart(2, '0');
-        return "T" + timestamp.slice(-4) + suffix; 
-    }
-
-    form.addEventListener('submit', (e) => {
+    // --- Logique Métier ---
+    const form = document.getElementById('reception-form');
+    form.addEventListener('submit', async (e) => {
         e.preventDefault();
         
-        try {
-            const codeRetrait = generateAlphanumericCode(6);
-            const codeEtiquette = generateUniqueLabel();
-            const nbEmballages = document.getElementById('nb-emballage').value;
-            currentCode = codeRetrait;
-            
-            const nouveauColis = {
-                id: "BT-" + Date.now().toString().slice(-6),
-                date: new Date().toLocaleDateString('fr-FR'),
-                exp: { 
-                    nom: document.getElementById('exp-nom').value, 
-                    tel: document.getElementById('exp-tel').value,
-                    ville: document.getElementById('exp-ville').value 
-                },
-                dest: { 
-                    nom: document.getElementById('dest-nom').value, 
-                    tel: document.getElementById('dest-tel').value, 
-                    ville: document.getElementById('dest-ville').value 
-                },
-                desc: document.getElementById('colis-desc').value,
-                prix: document.getElementById('colis-prix').value,
-                nb: nbEmballages,
-                code: codeRetrait,
-                etiquette: codeEtiquette,
-                statut: "En attente"
-            };
+        const codeRetrait = Math.random().toString(36).substring(2, 8).toUpperCase();
+        const codeEtiquette = "T" + Date.now().toString().slice(-4) + Math.floor(Math.random() * 100).toString().padStart(2, '0');
+        const nbEmballages = document.getElementById('nb-emballage').value;
+        
+        const nouveauColis = {
+            id: "BT-" + Date.now().toString().slice(-6),
+            date: new Date().toLocaleDateString('fr-FR'),
+            exp: { 
+                nom: document.getElementById('exp-nom').value, 
+                tel: document.getElementById('exp-tel').value,
+                ville: document.getElementById('exp-ville').value 
+            },
+            dest: { 
+                nom: document.getElementById('dest-nom').value, 
+                tel: document.getElementById('dest-tel').value, 
+                ville: document.getElementById('dest-ville').value 
+            },
+            desc: document.getElementById('colis-desc').value,
+            prix: document.getElementById('colis-prix').value,
+            nb: nbEmballages,
+            code: codeRetrait,
+            etiquette: codeEtiquette,
+            statut: "En attente",
+            timestamp: Date.now()
+        };
 
+        try {
+            // Push vers Firebase (Cloud First)
+            const newColisRef = push(dbRef);
+            await set(newColisRef, nouveauColis);
+            
+            currentCode = codeRetrait;
             currentColis = nouveauColis;
-            db_colis.unshift(nouveauColis);
-            localStorage.setItem('bt_colis_data', JSON.stringify(db_colis));
             
             showSuccess(codeRetrait, codeEtiquette, nbEmballages);
             form.reset();
-            renderAll();
-            
-            if(typeof forcePush === "function") forcePush();
         } catch (err) {
-            alert("Erreur lors de l'enregistrement.");
+            alert("Erreur de synchronisation cloud.");
         }
     });
 
@@ -440,48 +449,62 @@
             return;
         }
 
-        container.innerHTML = db_colis.slice(0, 5).map((c) => `
-            <div class="colis-item" onclick="afficherCodeDepuisListe('${c.id}')">
+        container.innerHTML = db_colis.slice(0, 8).map((c) => `
+            <div class="colis-item" id="item-${c.id}">
                 <div class="d-flex justify-content-between align-items-start">
-                    <div>
+                    <div onclick="window.displayCode('${c.id}')">
                         <span class="colis-id">${c.id}</span> <span class="badge bg-primary ms-1" style="font-size:0.6rem">🏷️ ${c.etiquette}</span>
                         <div class="small fw-bold mt-1">${c.dest.nom} (${c.nb} pces)</div>
                         <div class="small text-info italic" style="font-size:0.75rem">${c.desc || 'Sans description'}</div>
-                        <div class="small text-secondary">De: ${c.exp.ville || '-'} Pour: ${c.dest.ville}</div>
                     </div>
                     <div class="text-end">
                         <span class="badge-dest">${c.dest.ville}</span>
                         <div class="small mt-2 fw-bold text-success">${c.prix} FCFA</div>
-                        <button class="btn-delete-colis mt-2" onclick="event.stopPropagation(); deleteColis('${c.id}')">Supprimer</button>
+                        <button class="btn-delete-colis mt-2" onclick="window.deleteColisCloud('${c.id}')">Supprimer</button>
                     </div>
                 </div>
             </div>
         `).join('');
     }
 
-    function afficherCodeDepuisListe(id) {
+    // --- Fonctions Globales pour Boutons HTML ---
+    window.toggleSidebar = () => document.getElementById('sidebar').classList.toggle('active');
+    
+    window.toggleJournal = () => {
+        const container = document.getElementById('journal-container');
+        container.style.display = (container.style.display === 'none') ? 'block' : 'none';
+    };
+
+    window.displayCode = (id) => {
         const colis = db_colis.find(c => c.id === id);
         if (colis) {
             currentColis = colis;
             currentCode = colis.code;
             showSuccess(colis.code, colis.etiquette, colis.nb);
-            copyCode();
         }
-    }
+    };
 
-    function deleteColis(id) {
+    window.deleteColisCloud = async (id) => {
         const profile = JSON.parse(localStorage.getItem('bt_profile') || '{"code":"1234"}');
-        const entry = prompt("Saisissez le code ADMIN pour supprimer :");
+        const entry = prompt("Code ADMIN pour supprimer :");
+        
         if (entry === profile.code) {
-            db_colis = db_colis.filter(c => c.id !== id);
-            localStorage.setItem('bt_colis_data', JSON.stringify(db_colis));
-            const tempOverlay = document.getElementById('temp-success-overlay');
-            tempOverlay.style.display = 'flex';
-            setTimeout(() => { tempOverlay.style.display = 'none'; }, 1500);
-            renderAll();
-            if(typeof forcePush === "function") forcePush();
-        } else if (entry !== null) alert("Code ADMIN incorrect !");
-    }
+            const snapshot = await get(dbRef);
+            const data = snapshot.val();
+            let keyToDelete = null;
+            
+            for (let key in data) {
+                if (data[key].id === id) { keyToDelete = key; break; }
+            }
+
+            if (keyToDelete) {
+                await remove(ref(db, `colis/${keyToDelete}`));
+                const tempOverlay = document.getElementById('temp-success-overlay');
+                tempOverlay.style.display = 'flex';
+                setTimeout(() => { tempOverlay.style.display = 'none'; }, 1500);
+            }
+        } else if (entry !== null) alert("Code incorrect");
+    };
 
     function showSuccess(code, etiquette, nb) {
         document.getElementById('success-code-display').innerText = code;
@@ -491,30 +514,29 @@
         if ("vibrate" in navigator) navigator.vibrate(200);
     }
 
-    function hideSuccess() {
-        document.getElementById('success-overlay').style.display = 'none';
-    }
+    window.hideSuccess = () => document.getElementById('success-overlay').style.display = 'none';
 
-    function copyCode() {
+    window.copyCode = () => {
         navigator.clipboard.writeText(currentCode).then(() => { 
             const display = document.getElementById('success-code-display');
-            display.style.backgroundColor = "rgba(0, 209, 139, 0.2)";
-            setTimeout(() => { display.style.backgroundColor = "rgba(0,0,0,0.1)"; }, 500);
+            display.style.backgroundColor = "rgba(0, 209, 139, 0.4)";
+            setTimeout(() => { display.style.backgroundColor = "rgba(0,0,0,0.05)"; }, 500);
         });
-    }
+    };
 
-    function shareWhatsApp() {
+    window.shareWhatsApp = () => {
         if (!currentColis) return;
         const message = `📦 *BARTHÉLÉMY TRANSPORT*\n\n` +
                         `Bonjour *${currentColis.dest.nom}*,\n` +
-                        `Un envoi de *${currentColis.nb} emballage(s)* vous a été expédié de *${currentColis.exp.ville || 'notre agence'}*.\n\n` +
-                        `🏷️ *ÉTIQUETTE SUR COLIS:* ${currentColis.etiquette}\n` +
+                        `Un envoi de *${currentColis.nb} emballage(s)* vous a été expédié de *${currentColis.exp.ville}*.\n\n` +
+                        `🏷️ *ÉTIQUETTE:* ${currentColis.etiquette}\n` +
                         `🔹 *Destination:* ${currentColis.dest.ville}\n` +
                         `🔐 *CODE DE RETRAIT:* ${currentColis.code}\n\n` +
-                        `Veuillez présenter ce code pour le retrait. Merci !`;
+                        `Merci de présenter ce code pour le retrait.`;
         window.open(`https://wa.me/${currentColis.dest.tel}?text=${encodeURIComponent(message)}`, '_blank');
-    }
+    };
 
+    // Fermeture auto sidebar
     document.addEventListener('click', (e) => {
         const sidebar = document.getElementById('sidebar');
         const burger = document.querySelector('.burger-icon');

@@ -25,7 +25,6 @@
             overflow-x: hidden;
         }
 
-        /* Couche de contraste pour l'image de fond */
         .overlay {
             background: rgba(0, 0, 0, 0.7);
             min-height: 100vh;
@@ -33,11 +32,12 @@
             position: relative;
         }
 
-        /* Header Style Gozem */
+        /* Header Style Gozem Ajusté */
         .navbar-custom {
             background-color: var(--gozem-dark);
             border-bottom: 2px solid var(--gozem-green);
-            padding: 10px 15px;
+            padding: 8px 15px;
+            min-height: 72px;
         }
 
         .burger-icon {
@@ -46,14 +46,15 @@
             cursor: pointer;
             border: none;
             background: none;
+            padding: 0;
+            margin-right: 10px;
         }
 
-        /* Modification : Déploiement Vertical au lieu de latéral */
         .sidebar {
             width: 100%;
             max-height: 0;
             position: absolute;
-            top: 72px; /* Hauteur ajustée du header */
+            top: 72px;
             left: 0;
             background: var(--gozem-dark);
             transition: max-height 0.4s ease-in-out;
@@ -63,15 +64,7 @@
             border-bottom: 2px solid var(--gozem-green);
         }
 
-        .sidebar.active { max-height: 400px; }
-
-        .sidebar-header {
-            padding: 20px;
-            text-align: center;
-            border-bottom: 1px solid rgba(255,255,255,0.1);
-        }
-
-        .logo-nav { width: 70px; margin-bottom: 10px; border-radius: 10px; }
+        .sidebar.active { max-height: 450px; }
 
         .nav-link-custom {
             padding: 15px 25px;
@@ -89,7 +82,6 @@
             font-weight: bold;
         }
 
-        /* Cartes du Tableau de bord */
         .stat-card {
             background: var(--card-bg);
             border-left: 5px solid var(--gozem-green);
@@ -110,40 +102,45 @@
             margin-top: 10px;
         }
 
-        .status-badge {
-            background: rgba(0, 209, 139, 0.2);
-            color: var(--gozem-green);
-            padding: 5px 12px;
-            border-radius: 20px;
-            font-size: 0.8rem;
+        /* Toast de connexion permanent */
+        .connexion-status {
+            font-size: 0.65rem;
+            padding: 4px 10px;
+            border-radius: 50px;
+            font-weight: bold;
+            text-transform: uppercase;
+            display: inline-flex;
+            align-items: center;
+            gap: 5px;
+            transition: all 0.3s ease;
         }
+        .status-online { background: rgba(0, 209, 139, 0.15); color: var(--gozem-green); border: 1px solid var(--gozem-green); }
+        .status-offline { background: rgba(255, 77, 77, 0.15); color: #FF4D4D; border: 1px solid #FF4D4D; }
 
-        /* Modification : Police spéciale et Logo redimensionné en Header */
         .app-title {
             font-family: 'Righteous', cursive;
-            font-size: 1.1rem;
+            font-size: 1rem;
             color: var(--text-white);
             letter-spacing: 0.5px;
             text-transform: uppercase;
-            line-height: 1.2;
+            line-height: 1.1;
         }
 
         .header-logo {
-            width: 50px; /* Redimensionnement visible */
+            width: 45px;
             height: auto;
             margin-right: 10px;
             border-radius: 5px;
         }
 
         .sub-title-header {
-            font-size: 0.75rem;
+            font-size: 0.7rem;
             font-family: 'Inter', sans-serif;
             color: var(--gozem-green);
             display: block;
             font-weight: 400;
         }
 
-        /* Bouton d'installation flottant */
         #install-btn {
             position: fixed;
             bottom: 20px;
@@ -155,7 +152,7 @@
             padding: 12px 20px;
             font-weight: bold;
             box-shadow: 0 4px 15px rgba(0,0,0,0.3);
-            display: none; /* Caché par défaut */
+            display: none;
             z-index: 2000;
             font-size: 0.9rem;
         }
@@ -167,14 +164,16 @@
     <nav class="navbar-custom d-flex align-items-center justify-content-between">
         <div class="d-flex align-items-center">
             <button class="burger-icon" onclick="toggleSidebar()">☰</button>
-            <img src="logo maison.png" alt="Logo" class="header-logo ms-2">
+            <img src="logo maison.png" alt="Logo" class="header-logo">
             <div class="app-title">
                 BARTHÉLÉMY TRANSPORT
-                <span class="sub-title-header">Service des colis confiés • Accueil</span>
+                <span class="sub-title-header">Gestion Cloud • Accueil</span>
             </div>
         </div>
         <div class="text-end">
-            <span class="status-badge d-none d-sm-inline">● Glazoué ↔ Parakou</span>
+            <div id="network-toast" class="connexion-status status-online">
+                <span id="status-dot">●</span> <span id="status-text">En ligne</span>
+            </div>
         </div>
     </nav>
 
@@ -191,7 +190,7 @@
     <div class="container py-4">
         <div class="text-center mb-4">
             <h2 class="fw-bold">Bonjour, <span id="display-name">Barthélémy</span> 👋</h2>
-            <p class="text-light">Prêt pour le trajet d'aujourd'hui ?</p>
+            <p class="text-light">Tableau de bord synchronisé en temps réel.</p>
         </div>
 
         <div class="row">
@@ -204,7 +203,7 @@
             <div class="col-6">
                 <div class="stat-card text-center border-info">
                     <h2 id="livre-count">0</h2>
-                    <p class="mb-0 small">Livrables</p>
+                    <p class="mb-0 small">Livrés</p>
                 </div>
             </div>
         </div>
@@ -228,12 +227,12 @@
 
 <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/12.11.0/firebase-app.js";
-    import { getDatabase, ref, set, onValue, push } from "https://www.gstatic.com/firebasejs/12.11.0/firebase-database.js";
+    import { getDatabase, ref, onValue, push, set, update, get } from "https://www.gstatic.com/firebasejs/12.11.0/firebase-database.js";
 
     const firebaseConfig = {
         apiKey: "AIzaSyDIOT3eym4lqX0wPNKIFwwuKGzjlofyaPM",
         authDomain: "barthelemy-transport.firebaseapp.com",
-        databaseURL: "https://barthelemy-transport-default-rtdb.europe-west1.firebasedatabase.app/",
+        databaseURL: "https://barthelemy-transport-default-rtdb.europe-west1.firebasedatabase.app",
         projectId: "barthelemy-transport",
         storageBucket: "barthelemy-transport.firebasestorage.app",
         messagingSenderId: "430598535240",
@@ -243,82 +242,89 @@
     const app = initializeApp(firebaseConfig);
     const db = getDatabase(app);
 
-    // --- LOGIQUE CLOUD-FIRST ---
+    // --- SYNCHRONISATION BIDIRECTIONNELLE ---
     const colisRef = ref(db, 'colis');
+    const profileRef = ref(db, 'profile');
+
+    // Écoute du profil
+    onValue(profileRef, (snapshot) => {
+        if (snapshot.exists()) {
+            localStorage.setItem('bt_profile', JSON.stringify(snapshot.val()));
+            updateDashboardStats();
+        }
+    });
+
+    // Écoute des colis (Temps Réel)
     onValue(colisRef, (snapshot) => {
         const data = snapshot.val();
         const list = data ? Object.values(data) : [];
         localStorage.setItem('bt_colis_data', JSON.stringify(list));
-        if (typeof updateDashboardStats === "function") updateDashboardStats();
+        updateDashboardStats();
     });
 
-    window.saveColisToCloud = function(colisData) {
-        const newColisRef = push(ref(db, 'colis'));
-        colisData.id = newColisRef.key;
-        return set(newColisRef, colisData);
-    };
-
-    window.updateColisStatusCloud = function(colisId, updates) {
-        const specificColisRef = ref(db, `colis/${colisId}`);
-        let allColis = JSON.parse(localStorage.getItem('bt_colis_data') || "[]");
-        let target = allColis.find(c => c.id === colisId);
-        if(target) {
-            Object.assign(target, updates);
-            set(ref(db, `colis/${colisId}`), target);
+    // Gestion du statut de connexion
+    const connectedRef = ref(db, ".info/connected");
+    onValue(connectedRef, (snap) => {
+        const toast = document.getElementById('network-toast');
+        const text = document.getElementById('status-text');
+        if (snap.val() === true) {
+            toast.className = "connexion-status status-online";
+            text.innerText = "En ligne";
+        } else {
+            toast.className = "connexion-status status-offline";
+            text.innerText = "Hors ligne";
         }
-    };
+    });
+
+    // Globaliser les fonctions pour les autres scripts
+    window.db_cloud = db;
 </script>
 
 <script>
-    // --- LOGIQUE D'INSTALLATION PWA ---
+    // --- LOGIQUE UI & DASHBOARD ---
+    function toggleSidebar() {
+        document.getElementById('sidebar').classList.toggle('active');
+    }
+
+    function updateDashboardStats() {
+        // Nom Utilisateur
+        const profile = JSON.parse(localStorage.getItem('bt_profile') || '{"name":"Barthélémy"}');
+        document.getElementById('display-name').innerText = profile.name;
+
+        // Statistiques Colis
+        const db_colis = JSON.parse(localStorage.getItem('bt_colis_data') || "[]");
+        const enAttente = db_colis.filter(c => c.statut === "En attente").length;
+        const livrés = db_colis.filter(c => c.statut === "Livré").length;
+        
+        document.getElementById('colis-count').innerText = enAttente;
+        document.getElementById('livre-count').innerText = livrés;
+    }
+
+    // Installation PWA
     let deferredPrompt;
     const installBtn = document.getElementById('install-btn');
 
     window.addEventListener('beforeinstallprompt', (e) => {
         e.preventDefault();
         deferredPrompt = e;
-        installBtn.style.display = 'block'; // Affiche le bouton si installable
+        installBtn.style.display = 'block';
     });
 
     installBtn.addEventListener('click', async () => {
         if (deferredPrompt) {
             deferredPrompt.prompt();
             const { outcome } = await deferredPrompt.userChoice;
-            if (outcome === 'accepted') {
-                console.log('Utilisateur a accepté l\'installation');
-            }
             deferredPrompt = null;
             installBtn.style.display = 'none';
         }
     });
 
-    window.addEventListener('appinstalled', () => {
-        installBtn.style.display = 'none';
-        deferredPrompt = null;
-    });
-
-    function toggleSidebar() {
-        document.getElementById('sidebar').classList.toggle('active');
-    }
-
-    function updateDashboardStats() {
-        const profile = JSON.parse(localStorage.getItem('bt_profile') || '{"name":"Barthélémy"}');
-        document.getElementById('display-name').innerText = profile.name;
-
-        const db_colis = JSON.parse(localStorage.getItem('bt_colis_data') || "[]");
-        const enAttente = db_colis.filter(c => c.statut === "En attente").length;
-        
-        document.getElementById('colis-count').innerText = enAttente;
-        document.getElementById('livre-count').innerText = enAttente;
-    }
-
-    document.addEventListener('DOMContentLoaded', () => {
-        updateDashboardStats();
-    });
-
+    // Fermeture auto sidebar au clic extérieur
     document.querySelector('.container').addEventListener('click', () => {
         document.getElementById('sidebar').classList.remove('active');
     });
+
+    document.addEventListener('DOMContentLoaded', updateDashboardStats);
 </script>
 
 </body>

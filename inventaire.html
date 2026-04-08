@@ -43,15 +43,15 @@
             width: 100%;
         }
 
-        /* --- Header & Sidebar (Héritage) --- */
+        /* --- Header & Sidebar --- */
         .navbar-custom {
             background-color: var(--gozem-dark);
             border-bottom: 2px solid var(--gozem-green);
-            padding: 10px 15px;
+            padding: 8px 12px;
         }
 
         .burger-icon {
-            font-size: 1.8rem;
+            font-size: 1.5rem;
             color: var(--gozem-green);
             cursor: pointer;
             border: none;
@@ -62,7 +62,7 @@
             width: 100%;
             max-height: 0;
             position: absolute;
-            top: 72px;
+            top: 65px;
             left: 0;
             background: var(--gozem-dark);
             transition: max-height 0.4s ease-in-out;
@@ -75,11 +75,11 @@
         .sidebar.active { max-height: 450px; }
 
         .nav-link-custom {
-            padding: 15px 25px;
+            padding: 12px 20px;
             color: white;
             text-decoration: none;
             display: block;
-            font-size: 1.1rem;
+            font-size: 1rem;
             border-bottom: 1px solid var(--border-light);
             text-align: center;
         }
@@ -88,14 +88,26 @@
 
         .app-title {
             font-family: 'Righteous', cursive;
-            font-size: 1.1rem;
+            font-size: 0.95rem;
             color: var(--text-white);
             text-transform: uppercase;
+            line-height: 1.1;
         }
 
-        .sub-title-header { font-size: 0.75rem; color: var(--gozem-green); display: block; font-weight: 400; }
+        .sub-title-header { font-size: 0.65rem; color: var(--gozem-green); display: block; font-weight: 400; }
 
-        .header-logo { width: 50px; height: auto; border-radius: 5px; }
+        .header-logo { width: 40px; height: auto; border-radius: 5px; }
+
+        /* Status Toast */
+        #status-toast {
+            font-size: 0.65rem;
+            padding: 2px 8px;
+            border-radius: 10px;
+            font-weight: bold;
+            text-transform: uppercase;
+        }
+        .online { background: rgba(0, 209, 139, 0.2); color: var(--gozem-green); border: 1px solid var(--gozem-green); }
+        .offline { background: rgba(220, 53, 69, 0.2); color: #ff4d4d; border: 1px solid #ff4d4d; }
 
         /* --- Filtres & Recherche --- */
         .filter-section {
@@ -211,6 +223,7 @@
                 <span class="sub-title-header">Inventaire Centralisé • 2026</span>
             </div>
         </div>
+        <div id="status-toast" class="online">Initialisation...</div>
     </nav>
 
     <div class="sidebar" id="sidebar">
@@ -333,16 +346,45 @@
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
-<script src="sync.js"></script>
-<script>
-    let db_colis = [];
-    let db_retraits = [];
 
-    document.addEventListener('DOMContentLoaded', () => {
-        verifierAccesAdmin();
-    });
+<script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/12.11.0/firebase-app.js";
+    import { getDatabase, ref, set, onValue, push } from "https://www.gstatic.com/firebasejs/12.11.0/firebase-database.js";
 
-    function verifierAccesAdmin() {
+    const firebaseConfig = {
+        apiKey: "AIzaSyDIOT3eym4lqX0wPNKIFwwuKGzjlofyaPM",
+        authDomain: "barthelemy-transport.firebaseapp.com",
+        databaseURL: "https://barthelemy-transport-default-rtdb.europe-west1.firebasedatabase.app",
+        projectId: "barthelemy-transport",
+        storageBucket: "barthelemy-transport.firebasestorage.app",
+        messagingSenderId: "430598535240",
+        appId: "1:430598535240:web:6261039803e0ae7be4407d"
+    };
+
+    const app = initializeApp(firebaseConfig);
+    const db = getDatabase(app);
+
+    // Variables globales
+    window.db_colis = [];
+    window.db_retraits = [];
+    const statusToast = document.getElementById('status-toast');
+
+    // Gestion du Toast Connecté / Hors ligne
+    function updateOnlineStatus() {
+        if (navigator.onLine) {
+            statusToast.innerText = "EN LIGNE 🟢";
+            statusToast.className = "online";
+        } else {
+            statusToast.innerText = "HORS LIGNE 🔴";
+            statusToast.className = "offline";
+        }
+    }
+    window.addEventListener('online', updateOnlineStatus);
+    window.addEventListener('offline', updateOnlineStatus);
+    updateOnlineStatus();
+
+    // --- LOGIQUE DE SECURITE ET ACCES ---
+    window.verifierAccesAdmin = function() {
         const profile = JSON.parse(localStorage.getItem('bt_profile') || '{"code":"1234"}');
         const code = prompt("🔒 ACCÈS RESTREINT\nVeuillez saisir le code ADMIN pour consulter l'inventaire :");
 
@@ -351,40 +393,49 @@
             initInventory();
         } else {
             alert("Accès refusé !");
-            window.location.href = "index.html"; // Redirection vers l'accueil
+            window.location.href = "index.html";
         }
-    }
+    };
 
+    // --- SYNCHRONISATION BIDIRECTIONNELLE FIREBASE ---
     function initInventory() {
-        syncData();
         loadFilterOptions();
-        updateFinance();
-        renderAll();
-        renderRetraits();
+
+        // 1. Écoute des Colis
+        const colisRef = ref(db, 'colis');
+        onValue(colisRef, (snapshot) => {
+            const data = snapshot.val();
+            window.db_colis = data ? Object.values(data) : [];
+            localStorage.setItem('bt_colis_data', JSON.stringify(window.db_colis));
+            renderAll();
+            updateFinance();
+        });
+
+        // 2. Écoute des Retraits
+        const retraitsRef = ref(db, 'retraits');
+        onValue(retraitsRef, (snapshot) => {
+            const data = snapshot.val();
+            window.db_retraits = data ? Object.values(data).reverse() : [];
+            localStorage.setItem('bt_retraits_history', JSON.stringify(window.db_retraits));
+            renderRetraits();
+            updateFinance();
+        });
     }
 
-    function toggleSidebar() {
+    // --- ACTIONS BOUTONS & LOGIQUES ---
+    window.toggleSidebar = function() {
         document.getElementById('sidebar').classList.toggle('active');
-    }
+    };
 
-    function toggleListe() {
+    window.toggleListe = function() {
         const container = document.getElementById('inventory-container');
         container.style.display = (container.style.display === 'none') ? 'block' : 'none';
-    }
+    };
 
-    function toggleHistory() {
+    window.toggleHistory = function() {
         const container = document.getElementById('history-container');
         container.style.display = (container.style.display === 'none') ? 'block' : 'none';
-    }
-
-    function syncData() {
-        try {
-            db_colis = JSON.parse(localStorage.getItem('bt_colis_data') || "[]");
-            db_retraits = JSON.parse(localStorage.getItem('bt_retraits_history') || "[]");
-        } catch (e) {
-            console.error("Erreur de synchronisation", e);
-        }
-    }
+    };
 
     function loadFilterOptions() {
         const selectVille = document.getElementById('filter-ville');
@@ -396,25 +447,25 @@
         });
     }
 
-    function updateFinance() {
+    window.updateFinance = function() {
         let totalLivre = 0;
         let totalAttente = 0;
 
-        db_colis.forEach(c => {
+        window.db_colis.forEach(c => {
             const prix = parseFloat(c.prix) || 0;
             if (c.statut === "Livré") totalLivre += prix;
             else totalAttente += prix;
         });
 
-        const totalRetraits = db_retraits.reduce((sum, r) => sum + parseFloat(r.montant), 0);
+        const totalRetraits = window.db_retraits.reduce((sum, r) => sum + parseFloat(r.montant), 0);
         const soldeReel = totalLivre - totalRetraits;
 
         document.getElementById('solde-valeur').innerText = soldeReel.toLocaleString() + " FCFA";
         document.getElementById('finance-livre').innerText = totalLivre.toLocaleString() + " F";
         document.getElementById('finance-attente').innerText = totalAttente.toLocaleString() + " F";
-    }
+    };
 
-    function validerRetrait() {
+    window.validerRetrait = function() {
         const montant = parseFloat(document.getElementById('retrait-montant').value);
         const motif = document.getElementById('retrait-motif').value;
         const codeInput = document.getElementById('retrait-admin-code').value;
@@ -430,8 +481,8 @@
             return;
         }
 
-        const totalLivre = db_colis.filter(c => c.statut === "Livré").reduce((sum, c) => sum + parseFloat(c.prix), 0);
-        const totalRetraits = db_retraits.reduce((sum, r) => sum + parseFloat(r.montant), 0);
+        const totalLivre = window.db_colis.filter(c => c.statut === "Livré").reduce((sum, c) => sum + parseFloat(c.prix), 0);
+        const totalRetraits = window.db_retraits.reduce((sum, r) => sum + parseFloat(r.montant), 0);
         const soldeDisponible = totalLivre - totalRetraits;
 
         if (montant > soldeDisponible) {
@@ -440,32 +491,30 @@
         }
 
         const nouveauRetrait = {
-            id: Date.now(),
+            id: Date.now().toString(),
             date: new Date().toLocaleString('fr-FR'),
             montant: montant,
             motif: motif
         };
 
-        db_retraits.unshift(nouveauRetrait);
-        localStorage.setItem('bt_retraits_history', JSON.stringify(db_retraits));
-        
-        bootstrap.Modal.getInstance(document.getElementById('modalRetrait')).hide();
-        document.getElementById('retrait-montant').value = "";
-        document.getElementById('retrait-motif').value = "";
-        document.getElementById('retrait-admin-code').value = "";
-        
-        updateFinance();
-        renderRetraits();
-        alert("Retrait enregistré !");
-    }
+        // Pousse vers Firebase
+        const newRetraitRef = push(ref(db, 'retraits'));
+        set(newRetraitRef, nouveauRetrait).then(() => {
+            bootstrap.Modal.getInstance(document.getElementById('modalRetrait')).hide();
+            document.getElementById('retrait-montant').value = "";
+            document.getElementById('retrait-motif').value = "";
+            document.getElementById('retrait-admin-code').value = "";
+            alert("Retrait enregistré dans le cloud !");
+        });
+    };
 
-    function renderRetraits() {
+    window.renderRetraits = function() {
         const container = document.getElementById('retrait-list');
-        if (db_retraits.length === 0) {
+        if (window.db_retraits.length === 0) {
             container.innerHTML = `<p class="text-center small opacity-50">Aucun retrait effectué.</p>`;
             return;
         }
-        container.innerHTML = db_retraits.map(r => `
+        container.innerHTML = window.db_retraits.map(r => `
             <div class="history-item d-flex justify-content-between">
                 <div>
                     <span class="text-white-50">${r.date}</span><br>
@@ -476,20 +525,20 @@
                 </div>
             </div>
         `).join('');
-    }
+    };
 
-    function renderAll() {
+    window.renderAll = function() {
         const container = document.getElementById('inventory-list');
         const search = document.getElementById('search-input').value.toLowerCase();
         const fVille = document.getElementById('filter-ville').value;
         const fStatut = document.getElementById('filter-statut').value;
 
-        const filtered = db_colis.filter(c => {
-            const matchesSearch = c.dest.nom.toLowerCase().includes(search) || 
-                                 c.exp.nom.toLowerCase().includes(search) || 
-                                 c.id.toLowerCase().includes(search) ||
-                                 c.etiquette.toLowerCase().includes(search);
-            const matchesVille = fVille === "" || c.dest.ville === fVille;
+        const filtered = window.db_colis.filter(c => {
+            const matchesSearch = (c.dest?.nom || "").toLowerCase().includes(search) || 
+                                 (c.exp?.nom || "").toLowerCase().includes(search) || 
+                                 (c.id || "").toLowerCase().includes(search) ||
+                                 (c.etiquette || "").toLowerCase().includes(search);
+            const matchesVille = fVille === "" || c.dest?.ville === fVille;
             const matchesStatut = fStatut === "" || c.statut === fStatut;
             return matchesSearch && matchesVille && matchesStatut;
         });
@@ -512,8 +561,8 @@
                 </div>
                 <div class="row g-0 align-items-center">
                     <div class="col-8">
-                        <div class="small"><b class="text-white-50">De:</b> ${c.exp.nom}</div>
-                        <div class="small"><b class="text-white-50">Vers:</b> ${c.dest.nom} (${c.dest.ville})</div>
+                        <div class="small"><b class="text-white-50">De:</b> ${c.exp?.nom}</div>
+                        <div class="small"><b class="text-white-50">Vers:</b> ${c.dest?.nom} (${c.dest?.ville})</div>
                         <div class="small mt-1 text-info italic">📦 ${c.desc || 'Sans description'}</div>
                     </div>
                     <div class="col-4 text-end">
@@ -525,27 +574,41 @@
                 </div>
             </div>
         `).join('');
-    }
+    };
 
-    function deleteColisSecure(id) {
+    window.deleteColisSecure = function(id) {
         const profile = JSON.parse(localStorage.getItem('bt_profile') || '{"code":"1234"}');
         const entry = prompt("Saisissez le code ADMIN pour supprimer ce colis :");
 
         if (entry === profile.code) {
-            db_colis = db_colis.filter(c => c.id !== id);
-            localStorage.setItem('bt_colis_data', JSON.stringify(db_colis));
-            
+            // Suppression sur Firebase (il faut trouver la clé unique du noeud)
+            const colisRef = ref(db, 'colis');
+            onValue(colisRef, (snapshot) => {
+                const data = snapshot.val();
+                for (let key in data) {
+                    if (data[key].id === id) {
+                        set(ref(db, `colis/${key}`), null); // Supprime le noeud
+                        break;
+                    }
+                }
+            }, { onlyOnce: true });
+
             const overlay = document.getElementById('delete-overlay');
             overlay.style.display = 'flex';
             setTimeout(() => {
                 overlay.style.display = 'none';
-                initInventory();
             }, 1200);
         } else if (entry !== null) {
             alert("⚠️ Code incorrect.");
         }
-    }
+    };
 
+    // Lancement de la vérification d'accès au chargement
+    document.addEventListener('DOMContentLoaded', () => {
+        window.verifierAccesAdmin();
+    });
+
+    // Fermeture automatique du sidebar au clic ailleurs
     document.addEventListener('click', (e) => {
         const sidebar = document.getElementById('sidebar');
         const burger = document.querySelector('.burger-icon');
@@ -553,6 +616,7 @@
             sidebar.classList.remove('active');
         }
     });
+
 </script>
 
 </body>

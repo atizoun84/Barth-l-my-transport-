@@ -34,15 +34,18 @@
             width: 100%;
         }
 
-        /* --- Header & Sidebar (Héritage) --- */
+        /* --- Header & Sidebar --- */
         .navbar-custom {
             background-color: var(--gozem-dark);
             border-bottom: 2px solid var(--gozem-green);
             padding: 10px 15px;
+            position: sticky;
+            top: 0;
+            z-index: 1100;
         }
 
         .burger-icon {
-            font-size: 1.8rem;
+            font-size: 1.5rem;
             color: var(--gozem-green);
             cursor: pointer;
             border: none;
@@ -52,8 +55,8 @@
         .sidebar {
             width: 100%;
             max-height: 0;
-            position: absolute;
-            top: 72px;
+            position: fixed;
+            top: 65px;
             left: 0;
             background: var(--gozem-dark);
             transition: max-height 0.4s ease-in-out;
@@ -66,11 +69,11 @@
         .sidebar.active { max-height: 450px; }
 
         .nav-link-custom {
-            padding: 15px 25px;
+            padding: 12px 25px;
             color: white;
             text-decoration: none;
             display: block;
-            font-size: 1.1rem;
+            font-size: 1rem;
             border-bottom: 1px solid var(--border-light);
             text-align: center;
         }
@@ -79,14 +82,28 @@
 
         .app-title {
             font-family: 'Righteous', cursive;
-            font-size: 1.1rem;
+            font-size: 0.9rem;
             color: var(--text-white);
             text-transform: uppercase;
+            line-height: 1.1;
         }
 
-        .sub-title-header { font-size: 0.75rem; color: var(--gozem-green); display: block; font-weight: 400; }
+        .sub-title-header { font-size: 0.65rem; color: var(--gozem-green); display: block; font-weight: 400; }
 
-        .header-logo { width: 50px; height: auto; border-radius: 5px; }
+        .header-logo { width: 40px; height: auto; border-radius: 5px; }
+
+        /* Status Toast */
+        #status-toast {
+            font-size: 0.65rem;
+            padding: 4px 10px;
+            border-radius: 20px;
+            font-weight: bold;
+            display: inline-block;
+            margin-left: 10px;
+            text-transform: uppercase;
+        }
+        .online { background: rgba(0, 209, 139, 0.2); color: var(--gozem-green); border: 1px solid var(--gozem-green); }
+        .offline { background: rgba(255, 77, 77, 0.2); color: #FF4D4D; border: 1px solid #FF4D4D; }
 
         /* --- UI Livraison --- */
         .search-section {
@@ -172,10 +189,10 @@
     <nav class="navbar-custom d-flex align-items-center justify-content-between">
         <div class="d-flex align-items-center">
             <button class="burger-icon" onclick="toggleSidebar()">☰</button>
-            <img src="logo maison.png" alt="Logo" class="header-logo ms-2">
+            <img src="logo app.png" alt="Logo" class="header-logo ms-2">
             <div class="app-title ms-2">
                 BARTHÉLÉMY TRANSPORT
-                <span class="sub-title-header">Service des colis • Livraison</span>
+                <span class="sub-title-header">Service Livraison <span id="status-toast" class="offline">...</span></span>
             </div>
         </div>
     </nav>
@@ -255,7 +272,8 @@
             </div>
 
             <div id="action-zone" class="mt-4">
-                </div>
+                <button class="btn-deliver shadow" onclick="validerLivraison()">LIVRER LE COLIS</button>
+            </div>
         </div>
 
         <div class="footer-mention">
@@ -276,118 +294,133 @@
     </div>
 </div>
 
-<script src="sync.js"></script>
-<script>
-    let db_colis = [];
-    let activeColis = null;
-    let tentatives = 0;
+<script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/12.11.0/firebase-app.js";
+    import { getDatabase, ref, set, onValue, get } from "https://www.gstatic.com/firebasejs/12.11.0/firebase-database.js";
+
+    const firebaseConfig = {
+        apiKey: "AIzaSyDIOT3eym4lqX0wPNKIFwwuKGzjlofyaPM",
+        authDomain: "barthelemy-transport.firebaseapp.com",
+        databaseURL: "https://barthelemy-transport-default-rtdb.europe-west1.firebasedatabase.app",
+        projectId: "barthelemy-transport",
+        storageBucket: "barthelemy-transport.firebasestorage.app",
+        messagingSenderId: "430598535240",
+        appId: "1:430598535240:web:6261039803e0ae7be4407d"
+    };
+
+    const app = initializeApp(firebaseConfig);
+    const db = getDatabase(app);
+
+    // Global variables for the logic
+    window.firebaseDB = db;
+    window.db_colis = [];
+    window.activeColis = null;
+    let tentatives = parseInt(localStorage.getItem('bt_tentatives') || '0');
     const MAX_TENTATIVES = 3;
 
-    document.addEventListener('DOMContentLoaded', () => {
-        syncData();
-        loadVilles();
-        verifierBlocage();
-    });
+    // Toast Status Logic
+    const statusToast = document.getElementById('status-toast');
+    const updateOnlineStatus = () => {
+        if (navigator.onLine) {
+            statusToast.innerText = "En Ligne";
+            statusToast.className = "online";
+        } else {
+            statusToast.innerText = "Hors Ligne";
+            statusToast.className = "offline";
+        }
+    };
+    window.addEventListener('online', updateOnlineStatus);
+    window.addEventListener('offline', updateOnlineStatus);
+    updateOnlineStatus();
 
-    function toggleSidebar() {
-        document.getElementById('sidebar').classList.toggle('active');
-    }
+    // Data Synchronization
+    function loadAppData() {
+        const colisRef = ref(db, 'colis');
+        const configRef = ref(db, 'config');
 
-    function syncData() {
-        try {
-            db_colis = JSON.parse(localStorage.getItem('bt_colis_data') || "[]");
-        } catch (e) { db_colis = []; }
-    }
+        // Listen for Realtime Updates
+        onValue(colisRef, (snapshot) => {
+            const data = snapshot.val();
+            window.db_colis = data ? Object.values(data) : [];
+            localStorage.setItem('bt_colis_data', JSON.stringify(window.db_colis));
+            loadVilles();
+        });
 
-    function loadVilles() {
-        const select = document.getElementById('search-ville');
-        const villes = JSON.parse(localStorage.getItem('bt_localites') || '["Parakou", "Glazoué", "Savè", "Dassa"]');
-        
-        // Nettoyage avant chargement (garde l'option par défaut)
-        select.innerHTML = '<option value="">Sélectionner une ville...</option>';
-
-        villes.forEach(v => {
-            // Calcul du nombre de colis restant pour cette ville
-            const count = db_colis.filter(c => c.dest.ville === v && c.statut !== "Livré").length;
-            
-            let opt = document.createElement('option');
-            opt.value = v; 
-            // Affichage intelligent du texte avec le compteur
-            opt.innerText = `${v} (${count} colis restant${count > 1 ? 's' : ''})`; 
-            select.appendChild(opt);
+        onValue(configRef, (snapshot) => {
+            const data = snapshot.val();
+            if (data) {
+                if (data.localites) localStorage.setItem('bt_localites', JSON.stringify(data.localites));
+                if (data.profile) localStorage.setItem('bt_profile', JSON.stringify(data.profile));
+            }
         });
     }
 
-    function verifierBlocage() {
-        if (localStorage.getItem('bt_locked') === 'true') {
-            document.querySelector('.container').innerHTML = `
-                <div class="text-center mt-5 p-4 bg-danger rounded">
-                    <h2 class="fw-bold">SYSTÈME BLOQUÉ 🔒</h2>
-                    <p>Trop de tentatives frauduleuses détectées.</p>
-                    <input type="password" id="unlock-code" class="form-control mb-2" placeholder="Code ADMIN pour débloquer">
-                    <button class="btn btn-light w-100" onclick="debloquerSysteme()">DÉBLOQUER</button>
-                </div>`;
-        }
-    }
+    // Logic Functions attached to window
+    window.toggleSidebar = () => {
+        document.getElementById('sidebar').classList.toggle('active');
+    };
 
-    function debloquerSysteme() {
-        const profile = JSON.parse(localStorage.getItem('bt_profile') || '{"code":"1234"}');
-        if (document.getElementById('unlock-code').value === profile.code) {
-            localStorage.setItem('bt_locked', 'false');
-            localStorage.setItem('bt_tentatives', '0');
-            location.reload();
-        } else { alert("Code incorrect !"); }
-    }
+    window.loadVilles = () => {
+        const select = document.getElementById('search-ville');
+        const localites = JSON.parse(localStorage.getItem('bt_localites') || '["Parakou", "Glazoué", "Savè", "Dassa"]');
+        const currentVal = select.value;
+        
+        select.innerHTML = '<option value="">Sélectionner une ville...</option>';
+        localites.forEach(v => {
+            const count = window.db_colis.filter(c => c.dest && c.dest.ville === v && c.statut !== "Livré").length;
+            let opt = document.createElement('option');
+            opt.value = v; 
+            opt.innerText = `${v} (${count} colis)`; 
+            select.appendChild(opt);
+        });
+        select.value = currentVal;
+    };
 
-    function filtrerParVille() {
+    window.filtrerParVille = () => {
         const ville = document.getElementById('search-ville').value;
         const container = document.getElementById('suggestions-container');
         container.innerHTML = "";
-        
         if (!ville) return;
 
-        const filtered = db_colis.filter(c => c.dest.ville === ville && c.statut !== "Livré");
-        
+        const filtered = window.db_colis.filter(c => c.dest && c.dest.ville === ville && c.statut !== "Livré");
         if (filtered.length === 0) {
-            container.innerHTML = "<p class='small text-center py-2'>Aucun colis en attente pour cette ville.</p>";
+            container.innerHTML = "<p class='small text-center py-2'>Aucun colis en attente.</p>";
             return;
         }
 
         filtered.forEach(c => {
             const div = document.createElement('div');
             div.className = "colis-suggestion";
-            div.innerHTML = `<strong>${c.id}</strong> - Dest: ${c.dest.nom} <br><small>${c.desc.substring(0,25)}...</small>`;
-            div.onclick = () => chargerColis(c.id);
+            div.innerHTML = `<strong>${c.id}</strong> - Dest: ${c.dest.nom} <br><small>${c.desc ? c.desc.substring(0,25) : ''}...</small>`;
+            div.onclick = () => window.chargerColis(c.id);
             container.appendChild(div);
         });
-    }
+    };
 
-    function chargerColis(id) {
-        activeColis = db_colis.find(c => c.id === id);
-        if (!activeColis) return;
+    window.chargerColis = (id) => {
+        window.activeColis = window.db_colis.find(c => c.id === id);
+        if (!window.activeColis) return;
 
-        document.getElementById('res-id').innerText = activeColis.id;
-        document.getElementById('res-exp-nom').innerText = activeColis.exp.nom;
-        document.getElementById('res-dest-init').innerText = activeColis.dest.nom;
-        document.getElementById('res-dest-nom').value = activeColis.dest.nom;
-        document.getElementById('res-desc').innerText = activeColis.desc || "Aucune description";
-        document.getElementById('res-prix').innerText = activeColis.prix + " FCFA";
+        document.getElementById('res-id').innerText = window.activeColis.id;
+        document.getElementById('res-exp-nom').innerText = window.activeColis.exp.nom;
+        document.getElementById('res-dest-init').innerText = window.activeColis.dest.nom;
+        document.getElementById('res-dest-nom').value = window.activeColis.dest.nom;
+        document.getElementById('res-desc').innerText = window.activeColis.desc || "Aucune description";
+        document.getElementById('res-prix').innerText = window.activeColis.prix + " FCFA";
         
         document.getElementById('resultat-container').style.display = 'block';
         document.getElementById('suggestions-container').innerHTML = "";
-        document.getElementById('action-zone').innerHTML = `<button class="btn-deliver shadow" onclick="validerLivraison()">LIVRER LE COLIS</button>`;
-    }
+    };
 
-    function validerLivraison() {
+    window.validerLivraison = () => {
         if (localStorage.getItem('bt_locked') === 'true') return;
-        if (!activeColis) return;
+        if (!window.activeColis) return;
 
         const profile = JSON.parse(localStorage.getItem('bt_profile') || '{"code":"1234", "collabo":"0000"}');
         const opType = document.getElementById('op-type').value;
         const opCode = document.getElementById('op-code').value;
         const clientCode = document.getElementById('final-delivery-code').value.trim().toUpperCase();
 
-        // 1. Vérification Opérateur
         const codeAttendu = (opType === 'admin') ? profile.code : (profile.collabo || "0000");
         
         if (opCode !== codeAttendu) {
@@ -395,50 +428,67 @@
             return;
         }
 
-        // 2. Vérification Code Client (Sécurité critique)
-        if (clientCode === activeColis.code) {
-            finaliserTransaction();
+        if (clientCode === window.activeColis.code) {
+            window.finaliserTransaction();
         } else {
             tentatives++;
             localStorage.setItem('bt_tentatives', tentatives);
-            
             if (tentatives >= MAX_TENTATIVES) {
                 localStorage.setItem('bt_locked', 'true');
-                alert("ALERTE : TENTATIVE DE RETRAIT FRAUDULEUX ! Système bloqué.");
-                verifierBlocage();
+                alert("ALERTE : TENTATIVE FRAUDULEUSE ! Système bloqué.");
+                window.verifierBlocage();
             } else {
-                alert(`CODE DE LIVRAISON INCORRECT ! Attention : ${MAX_TENTATIVES - tentatives} essai(s) restant(s) avant blocage.`);
+                alert(`CODE CLIENT INCORRECT ! ${MAX_TENTATIVES - tentatives} essai(s) restant(s).`);
             }
         }
-    }
+    };
 
-    function finaliserTransaction() {
+    window.finaliserTransaction = async () => {
         try {
-            // Re-synchronisation pour éviter les erreurs d'index ou de référence
-            db_colis = JSON.parse(localStorage.getItem('bt_colis_data') || "[]");
-            const index = db_colis.findIndex(c => c.id === activeColis.id);
+            const updateData = {
+                ...window.activeColis,
+                statut: "Livré",
+                receptionnaire: document.getElementById('res-dest-nom').value,
+                date_livraison: new Date().toLocaleString('fr-FR'),
+                operateur_nom: document.getElementById('op-type').value
+            };
+
+            // Cloud Push First
+            await set(ref(db, 'colis/' + window.activeColis.id), updateData);
             
-            if (index !== -1) {
-                db_colis[index].statut = "Livré";
-                db_colis[index].receptionnaire = document.getElementById('res-dest-nom').value;
-                db_colis[index].date_livraison = new Date().toLocaleString('fr-FR');
-                db_colis[index].operateur = document.getElementById('op-type').value;
-
-                localStorage.setItem('bt_colis_data', JSON.stringify(db_colis));
-                
-                // Appel du script de synchronisation cloud si présent
-                if(typeof forcePush === "function") forcePush();
-                
-                document.getElementById('delivery-success').style.display = 'flex';
-                if ("vibrate" in navigator) navigator.vibrate(200);
-            } else {
-                throw new Error("Colis non trouvé dans la base.");
-            }
+            document.getElementById('delivery-success').style.display = 'flex';
+            if ("vibrate" in navigator) navigator.vibrate(200);
         } catch (err) {
-            alert("Erreur lors de l'enregistrement final : " + err.message);
+            alert("Erreur Cloud : " + err.message);
         }
-    }
+    };
 
+    window.verifierBlocage = () => {
+        if (localStorage.getItem('bt_locked') === 'true') {
+            document.querySelector('.container').innerHTML = `
+                <div class="text-center mt-5 p-4 bg-danger rounded">
+                    <h2 class="fw-bold">SYSTÈME BLOQUÉ 🔒</h2>
+                    <p>Trop de tentatives frauduleuses détectées.</p>
+                    <input type="password" id="unlock-code" class="form-control mb-2" placeholder="Code ADMIN pour débloquer">
+                    <button class="btn btn-light w-100" onclick="window.debloquerSysteme()">DÉBLOQUER</button>
+                </div>`;
+        }
+    };
+
+    window.debloquerSysteme = () => {
+        const profile = JSON.parse(localStorage.getItem('bt_profile') || '{"code":"1234"}');
+        if (document.getElementById('unlock-code').value === profile.code) {
+            localStorage.setItem('bt_locked', 'false');
+            localStorage.setItem('bt_tentatives', '0');
+            location.reload();
+        } else { alert("Code incorrect !"); }
+    };
+
+    // Initialize
+    loadAppData();
+    window.verifierBlocage();
+
+    // Auto-close sidebar
     document.addEventListener('click', (e) => {
         const sidebar = document.getElementById('sidebar');
         const burger = document.querySelector('.burger-icon');

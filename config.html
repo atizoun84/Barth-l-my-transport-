@@ -41,11 +41,11 @@
         .navbar-custom {
             background-color: var(--gozem-dark);
             border-bottom: 2px solid var(--gozem-green);
-            padding: 10px 15px;
+            padding: 8px 12px;
         }
 
         .burger-icon {
-            font-size: 1.8rem;
+            font-size: 1.5rem;
             color: var(--gozem-green);
             cursor: pointer;
             border: none;
@@ -56,7 +56,7 @@
             width: 100%;
             max-height: 0;
             position: absolute;
-            top: 72px;
+            top: 60px;
             left: 0;
             background: var(--gozem-dark);
             transition: max-height 0.4s ease-in-out;
@@ -66,7 +66,7 @@
             border-bottom: 2px solid var(--gozem-green);
         }
 
-        .sidebar.active { max-height: 400px; }
+        .sidebar.active { max-height: 450px; }
 
         .nav-link-custom {
             padding: 15px 25px;
@@ -83,6 +83,20 @@
             color: var(--gozem-dark);
             font-weight: bold;
         }
+
+        /* Toast Connectivité - Taille Minimalisée */
+        .conn-status {
+            font-size: 0.55rem;
+            padding: 2px 6px;
+            border-radius: 6px;
+            font-weight: bold;
+            text-transform: uppercase;
+            display: flex;
+            align-items: center;
+            gap: 3px;
+        }
+        .online { background: rgba(0, 209, 139, 0.2); color: #00D18B; border: 1px solid #00D18B; }
+        .offline { background: rgba(255, 77, 77, 0.2); color: #FF4D4D; border: 1px solid #FF4D4D; }
 
         .stat-card {
             background: var(--card-bg);
@@ -107,29 +121,30 @@
         .status-badge {
             background: rgba(0, 209, 139, 0.2);
             color: var(--gozem-green);
-            padding: 5px 12px;
+            padding: 3px 8px;
             border-radius: 20px;
-            font-size: 0.8rem;
+            font-size: 0.65rem;
         }
 
+        /* Ajustement Police Header pour éviter chevauchement */
         .app-title {
             font-family: 'Righteous', cursive;
-            font-size: 1.1rem;
+            font-size: 0.9rem;
             color: var(--text-white);
-            letter-spacing: 0.5px;
+            letter-spacing: 0.3px;
             text-transform: uppercase;
-            line-height: 1.2;
+            line-height: 1.1;
         }
 
         .header-logo {
-            width: 50px;
+            width: 40px;
             height: auto;
-            margin-right: 10px;
+            margin-right: 8px;
             border-radius: 5px;
         }
 
         .sub-title-header {
-            font-size: 0.75rem;
+            font-size: 0.6rem;
             font-family: 'Inter', sans-serif;
             color: var(--gozem-green);
             display: block;
@@ -223,13 +238,16 @@
     <nav class="navbar-custom d-flex align-items-center justify-content-between">
         <div class="d-flex align-items-center">
             <button class="burger-icon" onclick="toggleSidebar()">☰</button>
-            <img src="logo maison.png" alt="Logo" class="header-logo ms-2">
+            <img src="logo app.png" alt="Logo" class="header-logo ms-2">
             <div class="app-title">
                 BARTHÉLÉMY TRANSPORT
-                <span class="sub-title-header">Service des colis confiés • Configuration</span>
+                <span class="sub-title-header">Service des colis • Configuration</span>
             </div>
         </div>
-        <div class="text-end">
+        <div class="d-flex flex-column align-items-end" style="max-width: 30%;">
+            <div id="connection-toast" class="conn-status online mb-1">
+                <span id="conn-dot">●</span> <span id="conn-text">Sync</span>
+            </div>
             <span class="status-badge d-none d-sm-inline">● Glazoué ↔ Parakou</span>
         </div>
     </nav>
@@ -239,6 +257,7 @@
             <a href="index.html" class="nav-link-custom">🏠 Tableau de bord</a>
             <a href="reception.html" class="nav-link-custom">📥 Réception Colis</a>
             <a href="livraison.html" class="nav-link-custom">📤 Livraison (Code)</a>
+            <a href="inventaire.html" class="nav-link-custom">📋 Inventaire Global</a>
             <a href="config.html" class="nav-link-custom">⚙️ Configuration</a>
         </nav>
     </div>
@@ -253,15 +272,15 @@
             <h5 class="mb-3" style="color: var(--gozem-green);">Profil Chauffeur & Sécurité</h5>
             <div class="mb-3">
                 <label class="form-label small">Nom complet</label>
-                <input type="text" class="form-control form-control-custom lockable" value="Barthélémy" id="user-name" readonly>
+                <input type="text" class="form-control form-control-custom lockable" value="" id="user-name" readonly>
             </div>
             <div class="mb-3">
                 <label class="form-label small">Numéro WhatsApp</label>
-                <input type="tel" class="form-control form-control-custom lockable" value="0148554250" id="user-tel" readonly>
+                <input type="tel" class="form-control form-control-custom lockable" value="" id="user-tel" readonly>
             </div>
             <div class="mb-3">
                 <label class="form-label small">Code de sécurité (Admin)</label>
-                <input type="password" class="form-control form-control-custom lockable" value="1234" id="secure-code" readonly>
+                <input type="password" class="form-control form-control-custom lockable" value="" id="secure-code" readonly>
             </div>
             
             <hr class="border-secondary">
@@ -338,7 +357,9 @@
         </div>
     </div>
 </div>
-</div> <div id="success-overlay" onclick="hideSuccess()">
+</div> 
+
+<div id="success-overlay" onclick="hideSuccess()">
     <div class="text-center text-white p-4">
         <div class="mb-4">
             <svg xmlns="http://www.w3.org/2000/svg" width="100" height="100" fill="currentColor" class="bi bi-check-circle-fill" viewBox="0 0 16 16">
@@ -350,42 +371,90 @@
     </div>
 </div>
 
-<script src="sync.js"></script>
-<script>
+<script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/12.11.0/firebase-app.js";
+    import { getDatabase, ref, set, onValue, get } from "https://www.gstatic.com/firebasejs/12.11.0/firebase-database.js";
+
+    const firebaseConfig = {
+        apiKey: "AIzaSyDIOT3eym4lqX0wPNKIFwwuKGzjlofyaPM",
+        authDomain: "barthelemy-transport.firebaseapp.com",
+        databaseURL: "https://barthelemy-transport-default-rtdb.europe-west1.firebasedatabase.app",
+        projectId: "barthelemy-transport",
+        storageBucket: "barthelemy-transport.firebasestorage.app",
+        messagingSenderId: "430598535240",
+        appId: "1:430598535240:web:6261039803e0ae7be4407d"
+    };
+
+    const app = initializeApp(firebaseConfig);
+    const db = getDatabase(app);
+
     let isLocked = true;
 
+    // --- Toast Connectivité ---
+    const updateOnlineStatus = () => {
+        const toast = document.getElementById('connection-toast');
+        const text = document.getElementById('conn-text');
+        if (navigator.onLine) {
+            toast.className = 'conn-status online mb-1';
+            text.innerText = 'Sync';
+        } else {
+            toast.className = 'conn-status offline mb-1';
+            text.innerText = 'Offline';
+        }
+    };
+    window.addEventListener('online', updateOnlineStatus);
+    window.addEventListener('offline', updateOnlineStatus);
+    updateOnlineStatus();
+
+    // --- Fonctions Globales ---
+    window.toggleSidebar = () => document.getElementById('sidebar').classList.toggle('active');
+    window.hideSuccess = () => document.getElementById('success-overlay').style.display = 'none';
+    window.showSuccess = (msg = "Opération réussie.", temp = false) => {
+        document.getElementById('overlay-msg').innerText = msg;
+        document.getElementById('success-overlay').style.display = 'flex';
+        if(temp) setTimeout(window.hideSuccess, 1500);
+    };
+
+    // --- Initialisation ---
     document.addEventListener('DOMContentLoaded', () => {
-        checkAdminAccess();
+        const profileRef = ref(db, 'bt_profile');
+        onValue(profileRef, (snapshot) => {
+            const data = snapshot.val() || { name: "Barthélémy", tel: "0148554250", code: "1234" };
+            localStorage.setItem('bt_profile', JSON.stringify(data));
+            
+            document.getElementById('user-name').value = data.name;
+            document.getElementById('user-tel').value = data.tel;
+            document.getElementById('secure-code').value = data.code;
+
+            if (document.getElementById('main-wrapper').style.display !== 'block') {
+                checkAdminAccess();
+            }
+        });
+
+        onValue(ref(db, 'bt_localites'), (snapshot) => {
+            const list = snapshot.val() || [];
+            localStorage.setItem('bt_localites', JSON.stringify(list));
+            loadLocalites();
+        });
+
+        onValue(ref(db, 'bt_collabos'), (snapshot) => {
+            const list = snapshot.val() || [];
+            localStorage.setItem('bt_collabos', JSON.stringify(list));
+            loadCollabos();
+        });
     });
 
-    // --- Sécurité : Demande de code ADMIN avant affichage ---
-    function checkAdminAccess() {
+    async function checkAdminAccess() {
         const profile = JSON.parse(localStorage.getItem('bt_profile') || '{"code":"1234"}');
         const entry = prompt("Accès Restreint : Saisissez le code ADMIN pour accéder à la configuration :");
         
         if (entry === profile.code) {
             document.getElementById('main-wrapper').style.display = 'block';
-            loadLocalites();
-            loadCollabos();
             applyLockState();
         } else {
             alert("⚠️ Accès refusé. Code incorrect.");
-            window.location.href = "index.html"; // Redirection si erreur
+            window.location.href = "index.html";
         }
-    }
-
-    function toggleSidebar() {
-        document.getElementById('sidebar').classList.toggle('active');
-    }
-
-    function showSuccess(msg = "Opération réussie.", temp = false) {
-        document.getElementById('overlay-msg').innerText = msg;
-        document.getElementById('success-overlay').style.display = 'flex';
-        if(temp) setTimeout(hideSuccess, 1500);
-    }
-
-    function hideSuccess() {
-        document.getElementById('success-overlay').style.display = 'none';
     }
 
     function applyLockState() {
@@ -408,13 +477,11 @@
         loadCollabos();
     }
 
-    function handleLockToggle() {
+    window.handleLockToggle = () => {
         const profile = JSON.parse(localStorage.getItem('bt_profile') || '{"code":"1234"}');
-        const correctCode = profile.code;
-
         if (isLocked) {
             const entry = prompt("Veuillez saisir le code ADMIN pour modifier :");
-            if (entry === correctCode) {
+            if (entry === profile.code) {
                 isLocked = false;
                 applyLockState();
             } else if (entry !== null) {
@@ -424,9 +491,9 @@
             saveProfile();
             isLocked = true;
             applyLockState();
-            showSuccess("Paramètres enregistrés et verrouillés.");
+            window.showSuccess("Paramètres enregistrés sur le Cloud.", true);
         }
-    }
+    };
 
     function saveProfile() {
         const data = {
@@ -434,11 +501,10 @@
             tel: document.getElementById('user-tel').value,
             code: document.getElementById('secure-code').value
         };
-        localStorage.setItem('bt_profile', JSON.stringify(data));
+        set(ref(db, 'bt_profile'), data);
     }
 
-    // --- Logique Localités ---
-    function addLocalite() {
+    window.addLocalite = () => {
         if (isLocked) return;
         const input = document.getElementById('loc-input');
         const vals = input.value.split(',');
@@ -446,22 +512,17 @@
         
         vals.forEach(v => {
             const trimmed = v.trim();
-            if (trimmed && !list.includes(trimmed)) {
-                list.push(trimmed);
-            }
+            if (trimmed && !list.includes(trimmed)) list.push(trimmed);
         });
         
-        localStorage.setItem('bt_localites', JSON.stringify(list));
+        set(ref(db, 'bt_localites'), list);
         input.value = '';
-        loadLocalites();
-        showSuccess("Localité(s) ajoutée(s) !", true);
-    }
+    };
 
     function loadLocalites() {
         const tbody = document.getElementById('localites-tbody');
         const list = JSON.parse(localStorage.getItem('bt_localites') || "[]");
         tbody.innerHTML = '';
-        
         list.forEach((loc, index) => {
             const row = tbody.insertRow();
             row.innerHTML = `
@@ -473,36 +534,30 @@
         });
     }
 
-    // --- Logique Collaborateurs ---
-    function addCollabo() {
+    window.addCollabo = () => {
         if (isLocked) return;
         const nom = document.getElementById('collab-nom').value.trim();
         const tel = document.getElementById('collab-tel').value.trim();
         const code = document.getElementById('collab-code').value.trim();
 
         if (!nom || !tel || !code) {
-            alert("Veuillez remplir tous les champs du collaborateur.");
+            alert("Veuillez remplir tous les champs.");
             return;
         }
 
         let list = JSON.parse(localStorage.getItem('bt_collabos') || "[]");
         list.push({ nom, tel, code });
-        
-        localStorage.setItem('bt_collabos', JSON.stringify(list));
+        set(ref(db, 'bt_collabos'), list);
         
         document.getElementById('collab-nom').value = '';
         document.getElementById('collab-tel').value = '';
         document.getElementById('collab-code').value = '';
-        
-        loadCollabos();
-        showSuccess("Collaborateur enregistré !", true);
-    }
+    };
 
     function loadCollabos() {
         const tbody = document.getElementById('collabos-tbody');
         const list = JSON.parse(localStorage.getItem('bt_collabos') || "[]");
         tbody.innerHTML = '';
-        
         list.forEach((c, index) => {
             const row = tbody.insertRow();
             row.innerHTML = `
@@ -515,50 +570,37 @@
         });
     }
 
-    function revealCode(index, element) {
+    window.revealCode = (index, element) => {
         const profile = JSON.parse(localStorage.getItem('bt_profile') || '{"code":"1234"}');
-        const entry = prompt("Veuillez saisir le code ADMIN pour voir ce code :");
-        
+        const entry = prompt("Code ADMIN requis pour voir le code :");
         if (entry === profile.code) {
             const list = JSON.parse(localStorage.getItem('bt_collabos') || "[]");
-            if (list[index]) {
-                element.innerText = list[index].code;
-                element.style.letterSpacing = "normal";
-                setTimeout(() => {
-                    element.innerText = "••••••";
-                    element.style.letterSpacing = "2px";
-                }, 5000);
-            }
-        } else if (entry !== null) {
-            alert("Code incorrect !");
-        }
-    }
+            element.innerText = list[index].code;
+            element.style.letterSpacing = "normal";
+            setTimeout(() => {
+                element.innerText = "••••••";
+                element.style.letterSpacing = "2px";
+            }, 5000);
+        } else if (entry !== null) alert("Code incorrect !");
+    };
 
-    function deleteItem(key, index, label) {
+    window.deleteItem = (key, index, label) => {
         if (isLocked) return;
         const profile = JSON.parse(localStorage.getItem('bt_profile') || '{"code":"1234"}');
-        const entry = prompt(`Confirmez avec le code ADMIN pour supprimer ${label} :`);
-        
+        const entry = prompt(`Code ADMIN pour supprimer ${label} :`);
         if (entry === profile.code) {
             let list = JSON.parse(localStorage.getItem(key) || "[]");
             list.splice(index, 1);
-            localStorage.setItem(key, JSON.stringify(list));
-            key === 'bt_localites' ? loadLocalites() : loadCollabos();
-        } else if (entry !== null) {
-            alert("Code incorrect !");
-        }
-    }
+            set(ref(db, key), list);
+        } else if (entry !== null) alert("Code incorrect !");
+    };
 
-    function toggleListe(id, btn) {
+    window.toggleListe = (id, btn) => {
         const container = document.getElementById(id);
-        if (container.style.display === 'none') {
-            container.style.display = 'block';
-            btn.innerText = 'MASQUER LA LISTE';
-        } else {
-            container.style.display = 'none';
-            btn.innerText = 'AFFICHER LA LISTE';
-        }
-    }
+        const isHidden = container.style.display === 'none';
+        container.style.display = isHidden ? 'block' : 'none';
+        btn.innerText = isHidden ? 'MASQUER LA LISTE' : 'AFFICHER LA LISTE';
+    };
 
     document.querySelector('.container').addEventListener('click', () => {
         document.getElementById('sidebar').classList.remove('active');
