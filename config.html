@@ -41,11 +41,11 @@
         .navbar-custom {
             background-color: var(--gozem-dark);
             border-bottom: 2px solid var(--gozem-green);
-            padding: 8px 12px;
+            padding: 10px 15px;
         }
 
         .burger-icon {
-            font-size: 1.5rem;
+            font-size: 1.8rem;
             color: var(--gozem-green);
             cursor: pointer;
             border: none;
@@ -56,7 +56,7 @@
             width: 100%;
             max-height: 0;
             position: absolute;
-            top: 60px;
+            top: 72px;
             left: 0;
             background: var(--gozem-dark);
             transition: max-height 0.4s ease-in-out;
@@ -84,16 +84,16 @@
             font-weight: bold;
         }
 
-        /* Toast Connectivité - Taille Minimalisée */
+        /* Toast Connectivité */
         .conn-status {
-            font-size: 0.55rem;
-            padding: 2px 6px;
-            border-radius: 6px;
+            font-size: 0.65rem;
+            padding: 4px 8px;
+            border-radius: 8px;
             font-weight: bold;
             text-transform: uppercase;
             display: flex;
             align-items: center;
-            gap: 3px;
+            gap: 5px;
         }
         .online { background: rgba(0, 209, 139, 0.2); color: #00D18B; border: 1px solid #00D18B; }
         .offline { background: rgba(255, 77, 77, 0.2); color: #FF4D4D; border: 1px solid #FF4D4D; }
@@ -121,30 +121,30 @@
         .status-badge {
             background: rgba(0, 209, 139, 0.2);
             color: var(--gozem-green);
-            padding: 3px 8px;
+            padding: 5px 12px;
             border-radius: 20px;
-            font-size: 0.65rem;
+            font-size: 0.8rem;
         }
 
-        /* Ajustement Police Header pour éviter chevauchement */
+        /* AJUSTEMENT TAILLE DE POLICE POUR ÉVITER LE CHEVAUCHEMENT */
         .app-title {
             font-family: 'Righteous', cursive;
-            font-size: 0.9rem;
+            font-size: clamp(0.85rem, 4vw, 1.1rem);
             color: var(--text-white);
-            letter-spacing: 0.3px;
+            letter-spacing: 0.5px;
             text-transform: uppercase;
-            line-height: 1.1;
+            line-height: 1.2;
         }
 
         .header-logo {
-            width: 40px;
+            width: clamp(35px, 10vw, 50px);
             height: auto;
-            margin-right: 8px;
+            margin-right: 10px;
             border-radius: 5px;
         }
 
         .sub-title-header {
-            font-size: 0.6rem;
+            font-size: clamp(0.6rem, 3vw, 0.75rem);
             font-family: 'Inter', sans-serif;
             color: var(--gozem-green);
             display: block;
@@ -236,17 +236,17 @@
 <div id="main-wrapper">
 <div class="overlay">
     <nav class="navbar-custom d-flex align-items-center justify-content-between">
-        <div class="d-flex align-items-center">
+        <div class="d-flex align-items-center flex-grow-1">
             <button class="burger-icon" onclick="toggleSidebar()">☰</button>
             <img src="logo app.png" alt="Logo" class="header-logo ms-2">
             <div class="app-title">
                 BARTHÉLÉMY TRANSPORT
-                <span class="sub-title-header">Service des colis • Configuration</span>
+                <span class="sub-title-header">Service colis • Configuration</span>
             </div>
         </div>
-        <div class="d-flex flex-column align-items-end" style="max-width: 30%;">
+        <div class="d-flex flex-column align-items-end ms-2">
             <div id="connection-toast" class="conn-status online mb-1">
-                <span id="conn-dot">●</span> <span id="conn-text">Sync</span>
+                <span id="conn-dot">●</span> <span id="conn-text">Cloud Sync</span>
             </div>
             <span class="status-badge d-none d-sm-inline">● Glazoué ↔ Parakou</span>
         </div>
@@ -396,10 +396,10 @@
         const text = document.getElementById('conn-text');
         if (navigator.onLine) {
             toast.className = 'conn-status online mb-1';
-            text.innerText = 'Sync';
+            text.innerText = 'Cloud Sync';
         } else {
             toast.className = 'conn-status offline mb-1';
-            text.innerText = 'Offline';
+            text.innerText = 'Offline Mode';
         }
     };
     window.addEventListener('online', updateOnlineStatus);
@@ -417,6 +417,7 @@
 
     // --- Initialisation ---
     document.addEventListener('DOMContentLoaded', () => {
+        // Chargement initial sécurisé du profil
         const profileRef = ref(db, 'bt_profile');
         onValue(profileRef, (snapshot) => {
             const data = snapshot.val() || { name: "Barthélémy", tel: "0148554250", code: "1234" };
@@ -431,12 +432,14 @@
             }
         });
 
+        // Sync Bidirectionnelle Localités
         onValue(ref(db, 'bt_localites'), (snapshot) => {
             const list = snapshot.val() || [];
             localStorage.setItem('bt_localites', JSON.stringify(list));
             loadLocalites();
         });
 
+        // Sync Bidirectionnelle Collaborateurs
         onValue(ref(db, 'bt_collabos'), (snapshot) => {
             const list = snapshot.val() || [];
             localStorage.setItem('bt_collabos', JSON.stringify(list));
@@ -504,6 +507,7 @@
         set(ref(db, 'bt_profile'), data);
     }
 
+    // --- Logique Localités ---
     window.addLocalite = () => {
         if (isLocked) return;
         const input = document.getElementById('loc-input');
@@ -534,6 +538,7 @@
         });
     }
 
+    // --- Logique Collaborateurs ---
     window.addCollabo = () => {
         if (isLocked) return;
         const nom = document.getElementById('collab-nom').value.trim();

@@ -553,7 +553,7 @@
                 <div class="d-flex justify-content-between align-items-start mb-2">
                     <div>
                         <span class="colis-meta">${c.date} • ID: ${c.id}</span>
-                        <div class="colis-title">🏷️ ${c.etiquette}</div>
+                        <div class="colis-title">🏷️ ${c.etiquette} ${c.statut === 'Livré' ? '<span class="small opacity-50 text-white fw-normal">| Opérateur : ' + (c.operateur_nom || 'N/A') + '</span>' : ''}</div>
                     </div>
                     <span class="status-pill ${c.statut === 'Livré' ? 'status-delivered' : 'status-pending'}">
                         ${c.statut}
@@ -563,6 +563,7 @@
                     <div class="col-8">
                         <div class="small"><b class="text-white-50">De:</b> ${c.exp?.nom}</div>
                         <div class="small"><b class="text-white-50">Vers:</b> ${c.dest?.nom} (${c.dest?.ville})</div>
+                        ${c.statut === 'Livré' ? `<div class="small"><b class="text-white-50">Reçu par:</b> ${c.receptionnaire || 'Non précisé'}</div>` : ''}
                         <div class="small mt-1 text-info italic">📦 ${c.desc || 'Sans description'}</div>
                     </div>
                     <div class="col-4 text-end">

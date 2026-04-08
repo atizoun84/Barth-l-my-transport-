@@ -198,6 +198,11 @@
         .badge-dest { background: rgba(0, 209, 139, 0.15); color: var(--gozem-green); font-size: 0.75rem; padding: 4px 8px; border-radius: 5px; }
 
         .footer-mention { font-size: 0.7rem; color: rgba(255,255,255,0.4); text-align: center; margin-top: 30px; padding-bottom: 20px; }
+
+        /* Styles additionnels pour les nouveaux statuts */
+        .badge-status { font-size: 0.6rem; padding: 3px 6px; border-radius: 4px; text-transform: uppercase; font-weight: bold; }
+        .bg-livre { background: var(--gozem-green); color: var(--gozem-dark); }
+        .bg-attente { background: #f1c40f; color: #000; }
     </style>
 </head>
 <body>
@@ -237,13 +242,13 @@
                     <div class="col-6">
                         <label class="form-label small">Départ</label>
                         <select id="exp-ville" class="form-select form-control-custom" required>
-                            <option value="">Ville...</option>
+                            <option value="">Chargement...</option>
                         </select>
                     </div>
                     <div class="col-6">
                         <label class="form-label small">Destination</label>
                         <select id="dest-ville" class="form-select form-control-custom" required>
-                            <option value="">Ville...</option>
+                            <option value="">Chargement...</option>
                         </select>
                     </div>
                     <div class="col-12">
@@ -282,9 +287,11 @@
             </form>
         </div>
 
-        <div class="d-flex justify-content-between align-items-center mb-3 mt-4">
-            <h6 class="mb-0 fw-bold"><span style="color:var(--gozem-green)">●</span> RÉCENTS (Aujourd'hui)</h6>
-            <button class="btn btn-sm btn-outline-light border-0" onclick="toggleJournal()">Afficher/Masquer</button>
+        <div class="mt-4 mb-3">
+            <h6 class="mb-2 fw-bold"><span style="color:var(--gozem-green)">●</span> HISTORIQUE DES COLIS REÇUS</h6>
+            <div class="mb-3">
+                <input type="text" id="filter-dest" class="form-control form-control-custom" placeholder="🔍 Rechercher par destinataire..." onkeyup="renderAll()">
+            </div>
         </div>
         
         <div id="journal-container">
@@ -349,7 +356,7 @@
     const app = initializeApp(firebaseConfig);
     const db = getDatabase(app);
     const dbRef = ref(db, 'colis');
-    const localRef = ref(db, 'localites');
+    const localRef = ref(db, 'bt_localites');
 
     let db_colis = [];
     let currentCode = "";
@@ -376,8 +383,9 @@
         renderAll();
     });
 
+    // Sync Dynamique des localités depuis le Cloud
     onValue(localRef, (snapshot) => {
-        const villes = snapshot.val() || ["Parakou", "Glazoué", "Savè", "Dassa"];
+        const villes = snapshot.val() || [];
         localStorage.setItem('bt_localites', JSON.stringify(villes));
         loadVilles(villes);
     });
@@ -385,9 +393,20 @@
     function loadVilles(villes) {
         const selectExp = document.getElementById('exp-ville');
         const selectDest = document.getElementById('dest-ville');
-        selectExp.innerHTML = '<option value="">Ville...</option>';
-        selectDest.innerHTML = '<option value="">Ville...</option>';
         
+        // Vidage et réinitialisation des selects
+        selectExp.innerHTML = '<option value="">Ville de départ...</option>';
+        selectDest.innerHTML = '<option value="">Ville de destination...</option>';
+        
+        if (villes.length === 0) {
+            const opt = document.createElement('option');
+            opt.innerText = "Aucune ville configurée";
+            opt.disabled = true;
+            selectExp.appendChild(opt.cloneNode(true));
+            selectDest.appendChild(opt);
+            return;
+        }
+
         villes.forEach(v => {
             let opt1 = document.createElement('option'); opt1.value = v; opt1.innerText = v;
             selectExp.appendChild(opt1);
@@ -428,7 +447,6 @@
         };
 
         try {
-            // Push vers Firebase (Cloud First)
             const newColisRef = push(dbRef);
             await set(newColisRef, nouveauColis);
             
@@ -442,20 +460,34 @@
         }
     });
 
-    function renderAll() {
+    window.renderAll = () => {
         const container = document.getElementById('liste-reception');
+        const searchVal = document.getElementById('filter-dest').value.toLowerCase();
+        
         if (db_colis.length === 0) {
             container.innerHTML = `<p class="text-center small text-secondary py-3">Aucun colis enregistré.</p>`;
             return;
         }
 
-        container.innerHTML = db_colis.slice(0, 8).map((c) => `
-            <div class="colis-item" id="item-${c.id}">
+        const filtered = db_colis.filter(c => c.dest.nom.toLowerCase().includes(searchVal));
+
+        if (filtered.length === 0) {
+            container.innerHTML = `<p class="text-center small text-secondary py-3">Aucun résultat pour "${searchVal}"</p>`;
+            return;
+        }
+
+        container.innerHTML = filtered.map((c) => {
+            const isLivre = c.statut === "Livré";
+            return `
+            <div class="colis-item" id="item-${c.id}" style="${isLivre ? 'opacity: 0.7;' : ''}">
                 <div class="d-flex justify-content-between align-items-start">
                     <div onclick="window.displayCode('${c.id}')">
-                        <span class="colis-id">${c.id}</span> <span class="badge bg-primary ms-1" style="font-size:0.6rem">🏷️ ${c.etiquette}</span>
+                        <span class="colis-id">${c.id}</span> 
+                        <span class="badge bg-primary ms-1" style="font-size:0.6rem">🏷️ ${c.etiquette}</span>
+                        <span class="badge-status ${isLivre ? 'bg-livre' : 'bg-attente'} ms-1">${c.statut}</span>
                         <div class="small fw-bold mt-1">${c.dest.nom} (${c.nb} pces)</div>
                         <div class="small text-info italic" style="font-size:0.75rem">${c.desc || 'Sans description'}</div>
+                        <div class="small text-secondary" style="font-size:0.65rem">${c.date}</div>
                     </div>
                     <div class="text-end">
                         <span class="badge-dest">${c.dest.ville}</span>
@@ -464,10 +496,9 @@
                     </div>
                 </div>
             </div>
-        `).join('');
-    }
+        `;}).join('');
+    };
 
-    // --- Fonctions Globales pour Boutons HTML ---
     window.toggleSidebar = () => document.getElementById('sidebar').classList.toggle('active');
     
     window.toggleJournal = () => {
@@ -536,7 +567,6 @@
         window.open(`https://wa.me/${currentColis.dest.tel}?text=${encodeURIComponent(message)}`, '_blank');
     };
 
-    // Fermeture auto sidebar
     document.addEventListener('click', (e) => {
         const sidebar = document.getElementById('sidebar');
         const burger = document.querySelector('.burger-icon');
