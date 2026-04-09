@@ -164,6 +164,31 @@
             margin-top: 30px;
             padding-bottom: 20px;
         }
+
+        /* --- Styles pour la liste des non livrés --- */
+        .waiting-list-container {
+            background: rgba(0, 0, 0, 0.4);
+            border-radius: 12px;
+            padding: 15px;
+            margin-top: 20px;
+            display: none; /* Masqué par défaut */
+        }
+        .waiting-item {
+            background: rgba(255,255,255,0.05);
+            border-radius: 8px;
+            padding: 10px;
+            margin-bottom: 8px;
+            border: 1px solid rgba(255,255,255,0.1);
+        }
+        .dest-highlight {
+            color: #ffc107; /* Jaune */
+            font-weight: bold;
+        }
+        .code-colis {
+            color: var(--gozem-green);
+            font-family: monospace;
+            font-weight: bold;
+        }
     </style>
 </head>
 <body>
@@ -224,6 +249,18 @@
             <button class="btn-main shadow mt-3 bg-white" onclick="location.href='livraison.html'">
                 VALIDER UNE LIVRAISON 📤
             </button>
+            
+            <button class="btn-main shadow mt-3 bg-warning text-dark" id="btn-toggle-waiting">
+                AFFICHER LES NON LIVRÉS 📋
+            </button>
+
+            <div id="waiting-list" class="waiting-list-container">
+                <h6 class="text-uppercase small fw-bold mb-3" style="color: #ffc107;">Colis en attente par destination</h6>
+                <div id="waiting-items-container">
+                    <p class="text-center small opacity-50">Aucun colis en attente.</p>
+                </div>
+            </div>
+
             <button class="btn-main shadow mt-3 bg-info text-white" onclick="location.href='inventaire.html'">
                 INVENTAIRE COMPLET 📋
             </button>
@@ -274,6 +311,7 @@
         const list = data ? Object.values(data) : [];
         localStorage.setItem('bt_colis_data', JSON.stringify(list));
         updateDashboardStats();
+        renderWaitingList(list);
     });
 
     // Gestion du statut de connexion
@@ -292,6 +330,32 @@
 
     // Globaliser les fonctions pour les autres scripts
     window.db_cloud = db;
+
+    // Fonction pour générer la liste des non livrés
+    function renderWaitingList(allColis) {
+        const container = document.getElementById('waiting-items-container');
+        const waitingColis = allColis.filter(c => c.statut !== "Livré");
+
+        if (waitingColis.length === 0) {
+            container.innerHTML = `<p class="text-center small opacity-50">Aucun colis en attente.</p>`;
+            return;
+        }
+
+        container.innerHTML = waitingColis.map(c => `
+            <div class="waiting-item">
+                <div class="d-flex justify-content-between align-items-center">
+                    <div>
+                        <span class="dest-highlight">${c.dest.ville.toUpperCase()}</span>
+                        <div class="small">${c.dest.nom}</div>
+                    </div>
+                    <div class="text-end">
+                        <span class="code-colis">${c.id}</span>
+                        <div class="small opacity-75">${c.nb || 1} pces</div>
+                    </div>
+                </div>
+            </div>
+        `).join('');
+    }
 </script>
 
 <script>
@@ -299,6 +363,18 @@
     function toggleSidebar() {
         document.getElementById('sidebar').classList.toggle('active');
     }
+
+    // Toggle de la liste des non livrés
+    document.getElementById('btn-toggle-waiting').addEventListener('click', function() {
+        const list = document.getElementById('waiting-list');
+        if (list.style.display === "block") {
+            list.style.display = "none";
+            this.innerText = "AFFICHER LES NON LIVRÉS 📋";
+        } else {
+            list.style.display = "block";
+            this.innerText = "MASQUER LA LISTE ❌";
+        }
+    });
 
     function updateDashboardStats() {
         // Nom Utilisateur
