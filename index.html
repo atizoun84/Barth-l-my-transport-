@@ -156,6 +156,14 @@
             z-index: 2000;
             font-size: 0.9rem;
         }
+
+        .footer-concepteur {
+            font-size: 0.75rem;
+            color: rgba(255,255,255,0.5);
+            text-align: center;
+            margin-top: 30px;
+            padding-bottom: 20px;
+        }
     </style>
 </head>
 <body>
@@ -220,6 +228,11 @@
                 INVENTAIRE COMPLET 📋
             </button>
         </div>
+
+        <div class="footer-concepteur">
+            Conçu par Atizoun Plateny AMOUSSOU<br>
+            atizoun@gmail.com | 01 97 74 40 35
+        </div>
     </div>
 </div>
 
@@ -229,14 +242,15 @@
     import { initializeApp } from "https://www.gstatic.com/firebasejs/12.11.0/firebase-app.js";
     import { getDatabase, ref, onValue, push, set, update, get } from "https://www.gstatic.com/firebasejs/12.11.0/firebase-database.js";
 
+    // Configuration Firebase mise à jour
     const firebaseConfig = {
-        apiKey: "AIzaSyDIOT3eym4lqX0wPNKIFwwuKGzjlofyaPM",
-        authDomain: "barthelemy-transport.firebaseapp.com",
-        databaseURL: "https://barthelemy-transport-default-rtdb.europe-west1.firebasedatabase.app",
-        projectId: "barthelemy-transport",
-        storageBucket: "barthelemy-transport.firebasestorage.app",
-        messagingSenderId: "430598535240",
-        appId: "1:430598535240:web:6261039803e0ae7be4407d"
+        apiKey: "AIzaSyDApQiUgWbjcktwRfv2KukUgGKyoF3bABs",
+        authDomain: "barthelemy-transport-bea5d.firebaseapp.com",
+        databaseURL: "https://barthelemy-transport-bea5d-default-rtdb.europe-west1.firebasedatabase.app/",
+        projectId: "barthelemy-transport-bea5d",
+        storageBucket: "barthelemy-transport-bea5d.firebasestorage.app",
+        messagingSenderId: "191875902622",
+        appId: "1:191875902622:web:290a7b122e083dc10a5f8f"
     };
 
     const app = initializeApp(firebaseConfig);

@@ -343,14 +343,15 @@
     import { initializeApp } from "https://www.gstatic.com/firebasejs/12.11.0/firebase-app.js";
     import { getDatabase, ref, set, push, onValue, remove, get } from "https://www.gstatic.com/firebasejs/12.11.0/firebase-database.js";
 
+    // Configuration Firebase mise à jour
     const firebaseConfig = {
-        apiKey: "AIzaSyDIOT3eym4lqX0wPNKIFwwuKGzjlofyaPM",
-        authDomain: "barthelemy-transport.firebaseapp.com",
-        databaseURL: "https://barthelemy-transport-default-rtdb.europe-west1.firebasedatabase.app",
-        projectId: "barthelemy-transport",
-        storageBucket: "barthelemy-transport.firebasestorage.app",
-        messagingSenderId: "430598535240",
-        appId: "1:430598535240:web:6261039803e0ae7be4407d"
+        apiKey: "AIzaSyDApQiUgWbjcktwRfv2KukUgGKyoF3bABs",
+        authDomain: "barthelemy-transport-bea5d.firebaseapp.com",
+        databaseURL: "https://barthelemy-transport-bea5d-default-rtdb.europe-west1.firebasedatabase.app",
+        projectId: "barthelemy-transport-bea5d",
+        storageBucket: "barthelemy-transport-bea5d.firebasestorage.app",
+        messagingSenderId: "191875902622",
+        appId: "1:191875902622:web:290a7b122e083dc10a5f8f"
     };
 
     const app = initializeApp(firebaseConfig);
@@ -394,7 +395,6 @@
         const selectExp = document.getElementById('exp-ville');
         const selectDest = document.getElementById('dest-ville');
         
-        // Vidage et réinitialisation des selects
         selectExp.innerHTML = '<option value="">Ville de départ...</option>';
         selectDest.innerHTML = '<option value="">Ville de destination...</option>';
         
@@ -501,11 +501,6 @@
 
     window.toggleSidebar = () => document.getElementById('sidebar').classList.toggle('active');
     
-    window.toggleJournal = () => {
-        const container = document.getElementById('journal-container');
-        container.style.display = (container.style.display === 'none') ? 'block' : 'none';
-    };
-
     window.displayCode = (id) => {
         const colis = db_colis.find(c => c.id === id);
         if (colis) {

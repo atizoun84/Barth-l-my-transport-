@@ -323,14 +323,15 @@
     import { initializeApp } from "https://www.gstatic.com/firebasejs/12.11.0/firebase-app.js";
     import { getDatabase, ref, set, onValue, get, update } from "https://www.gstatic.com/firebasejs/12.11.0/firebase-database.js";
 
+    // NOUVELLE CONFIGURATION FIREBASE MISE À JOUR
     const firebaseConfig = {
-        apiKey: "AIzaSyDIOT3eym4lqX0wPNKIFwwuKGzjlofyaPM",
-        authDomain: "barthelemy-transport.firebaseapp.com",
-        databaseURL: "https://barthelemy-transport-default-rtdb.europe-west1.firebasedatabase.app",
-        projectId: "barthelemy-transport",
-        storageBucket: "barthelemy-transport.firebasestorage.app",
-        messagingSenderId: "430598535240",
-        appId: "1:430598535240:web:6261039803e0ae7be4407d"
+        apiKey: "AIzaSyDApQiUgWbjcktwRfv2KukUgGKyoF3bABs",
+        authDomain: "barthelemy-transport-bea5d.firebaseapp.com",
+        databaseURL: "https://barthelemy-transport-bea5d-default-rtdb.europe-west1.firebasedatabase.app",
+        projectId: "barthelemy-transport-bea5d",
+        storageBucket: "barthelemy-transport-bea5d.firebasestorage.app",
+        messagingSenderId: "191875902622",
+        appId: "1:191875902622:web:290a7b122e083dc10a5f8f"
     };
 
     const app = initializeApp(firebaseConfig);
@@ -339,7 +340,7 @@
     window.firebaseDB = db;
     window.db_colis = [];
     window.activeColis = null;
-    window.nomOperateurActif = ""; // Stockage temporaire
+    window.nomOperateurActif = ""; 
     let tentatives = parseInt(localStorage.getItem('bt_tentatives') || '0');
     const MAX_TENTATIVES = 3;
 
@@ -371,13 +372,6 @@
             window.db_colis = data ? Object.values(data) : [];
             localStorage.setItem('bt_colis_data', JSON.stringify(window.db_colis));
             loadVilles();
-            
-            if(window.activeColis) {
-                const updated = window.db_colis.find(c => c.id === window.activeColis.id);
-                if(updated && updated.statut === "Livré") {
-                    // Ne recharge pas immédiatement pour laisser voir l'overlay de succès
-                }
-            }
         });
 
         onValue(localitesRef, (snapshot) => {
@@ -399,7 +393,6 @@
         });
     }
 
-    // Mise à jour de la liste déroulante des opérateurs (Admin + Collabos)
     function updateOperatorList() {
         const opSelect = document.getElementById('op-select');
         const profile = JSON.parse(localStorage.getItem('bt_profile') || '{"name":"Chauffeur"}');
@@ -407,16 +400,14 @@
         
         opSelect.innerHTML = '<option value="">-- Qui effectue la livraison ? --</option>';
         
-        // Ajouter l'Admin (Chauffeur Principal)
         let optAdmin = document.createElement('option');
-        optAdmin.value = "ADMIN_SECURE"; // Identifiant interne pour l'admin
+        optAdmin.value = "ADMIN_SECURE"; 
         optAdmin.innerText = `${profile.name} (Admin)`;
         opSelect.appendChild(optAdmin);
 
-        // Ajouter les collaborateurs
         collabos.forEach((c, index) => {
             let opt = document.createElement('option');
-            opt.value = index; // On stocke l'index pour retrouver le code
+            opt.value = index; 
             opt.innerText = c.nom;
             opSelect.appendChild(opt);
         });
@@ -513,7 +504,6 @@
 
         if (clientCode === window.activeColis.code) {
             window.nomOperateurActif = nomOperateur;
-            // Étape 1 : Affichage des informations de marquage/colisage
             document.getElementById('info-nb-colis').innerText = window.activeColis.nombre_colis || "1";
             document.getElementById('info-marquage').innerText = window.activeColis.id;
             document.getElementById('delivery-info-overlay').style.display = 'flex';
