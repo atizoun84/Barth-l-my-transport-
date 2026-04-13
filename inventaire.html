@@ -465,6 +465,7 @@
         document.getElementById('finance-attente').innerText = totalAttente.toLocaleString() + " F";
     };
 
+    // CORRECTION : Attacher explicitement à window pour le onclick du bouton HTML
     window.validerRetrait = function() {
         const montant = parseFloat(document.getElementById('retrait-montant').value);
         const motif = document.getElementById('retrait-motif').value;
@@ -500,11 +501,18 @@
         // Pousse vers Firebase
         const newRetraitRef = push(ref(db, 'retraits'));
         set(newRetraitRef, nouveauRetrait).then(() => {
-            bootstrap.Modal.getInstance(document.getElementById('modalRetrait')).hide();
+            // Fermeture modale via Bootstrap
+            const modalEl = document.getElementById('modalRetrait');
+            const modalInstance = bootstrap.Modal.getInstance(modalEl);
+            if (modalInstance) modalInstance.hide();
+            
+            // Reset champs
             document.getElementById('retrait-montant').value = "";
             document.getElementById('retrait-motif').value = "";
             document.getElementById('retrait-admin-code').value = "";
             alert("Retrait enregistré dans le cloud !");
+        }).catch(err => {
+            alert("Erreur lors de l'enregistrement : " + err.message);
         });
     };
 
@@ -582,13 +590,12 @@
         const entry = prompt("Saisissez le code ADMIN pour supprimer ce colis :");
 
         if (entry === profile.code) {
-            // Suppression sur Firebase (il faut trouver la clé unique du noeud)
             const colisRef = ref(db, 'colis');
             onValue(colisRef, (snapshot) => {
                 const data = snapshot.val();
                 for (let key in data) {
                     if (data[key].id === id) {
-                        set(ref(db, `colis/${key}`), null); // Supprime le noeud
+                        set(ref(db, `colis/${key}`), null);
                         break;
                     }
                 }
@@ -604,16 +611,14 @@
         }
     };
 
-    // Lancement de la vérification d'accès au chargement
     document.addEventListener('DOMContentLoaded', () => {
         window.verifierAccesAdmin();
     });
 
-    // Fermeture automatique du sidebar au clic ailleurs
     document.addEventListener('click', (e) => {
         const sidebar = document.getElementById('sidebar');
         const burger = document.querySelector('.burger-icon');
-        if (sidebar.classList.contains('active') && !sidebar.contains(e.target) && !burger.contains(e.target)) {
+        if (sidebar && sidebar.classList.contains('active') && !sidebar.contains(e.target) && !burger.contains(e.target)) {
             sidebar.classList.remove('active');
         }
     });
