@@ -465,7 +465,7 @@
         document.getElementById('finance-attente').innerText = totalAttente.toLocaleString() + " F";
     };
 
-    // CORRECTION : Attacher explicitement à window pour le onclick du bouton HTML
+    // CORRECTION : Gestion optimisée du retrait et du succès
     window.validerRetrait = function() {
         const montant = parseFloat(document.getElementById('retrait-montant').value);
         const motif = document.getElementById('retrait-motif').value;
@@ -473,12 +473,12 @@
         const profile = JSON.parse(localStorage.getItem('bt_profile') || '{"code":"1234"}');
 
         if (codeInput !== profile.code) {
-            alert("Code ADMIN incorrect !");
+            alert("⚠️ Code ADMIN incorrect !");
             return;
         }
 
         if (!montant || montant <= 0 || !motif) {
-            alert("Veuillez remplir tous les champs correctement.");
+            alert("⚠️ Veuillez remplir tous les champs.");
             return;
         }
 
@@ -487,21 +487,21 @@
         const soldeDisponible = totalLivre - totalRetraits;
 
         if (montant > soldeDisponible) {
-            alert("Solde insuffisant pour ce retrait.");
+            alert("⚠️ Solde insuffisant pour ce retrait.");
             return;
         }
 
         const nouveauRetrait = {
-            id: Date.now().toString(),
+            id: "R-" + Date.now(),
             date: new Date().toLocaleString('fr-FR'),
             montant: montant,
             motif: motif
         };
 
-        // Pousse vers Firebase
+        // Pousse vers Firebase (Note: Assure-toi que les règles Firebase autorisent le dossier 'retraits')
         const newRetraitRef = push(ref(db, 'retraits'));
         set(newRetraitRef, nouveauRetrait).then(() => {
-            // Fermeture modale via Bootstrap
+            // Fermeture modale
             const modalEl = document.getElementById('modalRetrait');
             const modalInstance = bootstrap.Modal.getInstance(modalEl);
             if (modalInstance) modalInstance.hide();
@@ -510,9 +510,12 @@
             document.getElementById('retrait-montant').value = "";
             document.getElementById('retrait-motif').value = "";
             document.getElementById('retrait-admin-code').value = "";
-            alert("Retrait enregistré dans le cloud !");
+            
+            // Message de succès bref et clair
+            alert("✅ Retrait effectué avec succès !");
         }).catch(err => {
-            alert("Erreur lors de l'enregistrement : " + err.message);
+            console.error(err);
+            alert("❌ Erreur d'accès Cloud. Vérifiez les règles de sécurité Firebase ou votre connexion.");
         });
     };
 

@@ -203,6 +203,7 @@
         .badge-status { font-size: 0.6rem; padding: 3px 6px; border-radius: 4px; text-transform: uppercase; font-weight: bold; }
         .bg-livre { background: var(--gozem-green); color: var(--gozem-dark); }
         .bg-attente { background: #f1c40f; color: #000; }
+        .badge-notify { font-size: 0.55rem; padding: 2px 5px; border-radius: 3px; background: rgba(255,255,255,0.1); color: #aaa; border: 1px solid rgba(255,255,255,0.2); }
     </style>
 </head>
 <body>
@@ -257,7 +258,7 @@
                     </div>
                     <div class="col-12">
                         <label class="form-label small">Téléphone Expéditeur</label>
-                        <input type="tel" id="exp-tel" class="form-control form-control-custom" placeholder="01XXXXXXXX" required>
+                        <input type="tel" id="exp-tel" class="form-control form-control-custom" value="+229 01" required oninput="forcePrefix(this)">
                     </div>
                     <hr class="border-secondary my-3">
                     <div class="col-12">
@@ -266,7 +267,7 @@
                     </div>
                     <div class="col-12">
                         <label class="form-label small">Téléphone Dest.</label>
-                        <input type="tel" id="dest-tel" class="form-control form-control-custom" placeholder="Téléphone" required>
+                        <input type="tel" id="dest-tel" class="form-control form-control-custom" value="+229 01" required oninput="forcePrefix(this)">
                     </div>
                     <div class="col-8">
                         <label class="form-label small">Nature du colis / Description</label>
@@ -316,13 +317,17 @@
         </div>
         <h4 class="fw-bold mb-1">COLIS ENREGISTRÉ !</h4>
         <div class="bg-light p-3 rounded mb-3 border text-center">
-            <p class="small mb-1 text-secondary">🏷️ CODE ÉTIQUETTE (À écrire sur les <span id="label-count">1</span> colis)</p>
+            <p class="small mb-1 text-secondary">🏷️ CODE ÉTIQUETTE (À écrire sur les <span id="label-count">1</span> Colis)</p>
             <div id="success-label-display" class="fs-3 fw-bold text-primary mb-2">---</div>
             <p class="small mb-1 text-secondary">🔐 CODE DE RETRAIT (Confidentiel)</p>
             <div id="success-code-display" class="fs-5 fw-bold" onclick="copyCode()" style="cursor:pointer; background:rgba(0,0,0,0.05); padding:5px; border-radius:5px;">----</div>
+            <div class="mt-2 text-danger fw-bold" style="font-size: 0.65rem; line-height: 1.2;">
+                ⚠️ PRÉSENTATION DU CODE OBLIGATOIRE POUR LE RETRAIT
+            </div>
         </div>
         <div class="d-grid gap-2">
             <button class="btn btn-success fw-bold py-3" onclick="shareWhatsApp()">PARTAGER SUR WHATSAPP 📱</button>
+            <button class="btn btn-primary fw-bold py-3" onclick="shareSMS()">ENVOYER PAR SMS ✉️</button>
             <button class="btn btn-dark fw-bold py-2" onclick="hideSuccess()">FERMER</button>
         </div>
     </div>
@@ -341,13 +346,12 @@
 
 <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/12.11.0/firebase-app.js";
-    import { getDatabase, ref, set, push, onValue, remove, get } from "https://www.gstatic.com/firebasejs/12.11.0/firebase-database.js";
+    import { getDatabase, ref, set, push, onValue, remove, get, update } from "https://www.gstatic.com/firebasejs/12.11.0/firebase-database.js";
 
-    // Configuration Firebase mise à jour
     const firebaseConfig = {
         apiKey: "AIzaSyDApQiUgWbjcktwRfv2KukUgGKyoF3bABs",
         authDomain: "barthelemy-transport-bea5d.firebaseapp.com",
-        databaseURL: "https://barthelemy-transport-bea5d-default-rtdb.europe-west1.firebasedatabase.app",
+        databaseURL: "https://barthelemy-transport-bea5d-default-rtdb.europe-west1.firebasedatabase.app/",
         projectId: "barthelemy-transport-bea5d",
         storageBucket: "barthelemy-transport-bea5d.firebasestorage.app",
         messagingSenderId: "191875902622",
@@ -358,12 +362,19 @@
     const db = getDatabase(app);
     const dbRef = ref(db, 'colis');
     const localRef = ref(db, 'bt_localites');
+    const profileRef = ref(db, 'bt_profile');
 
     let db_colis = [];
     let currentCode = "";
     let currentColis = null;
+    let currentColisFirebaseKey = null;
 
-    // --- Monitoring Connexion ---
+    window.forcePrefix = (el) => {
+        if (!el.value.startsWith("+229 01")) {
+            el.value = "+229 01";
+        }
+    };
+
     const statusEl = document.getElementById('connection-status');
     const connectedRef = ref(db, '.info/connected');
     onValue(connectedRef, (snap) => {
@@ -376,28 +387,35 @@
         }
     });
 
-    // --- Chargement des données ---
     onValue(dbRef, (snapshot) => {
         const data = snapshot.val();
-        db_colis = data ? Object.values(data).reverse() : [];
+        db_colis = [];
+        if(data) {
+            for(let key in data) {
+                db_colis.push({...data[key], firebaseKey: key});
+            }
+        }
+        db_colis.reverse();
         localStorage.setItem('bt_colis_data', JSON.stringify(db_colis));
         renderAll();
     });
 
-    // Sync Dynamique des localités depuis le Cloud
     onValue(localRef, (snapshot) => {
         const villes = snapshot.val() || [];
         localStorage.setItem('bt_localites', JSON.stringify(villes));
         loadVilles(villes);
     });
 
+    onValue(profileRef, (snapshot) => {
+        const data = snapshot.val() || { name: "Barthélémy AMOUSSOU", tel: "01 97 74 40 35" };
+        localStorage.setItem('bt_profile', JSON.stringify(data));
+    });
+
     function loadVilles(villes) {
         const selectExp = document.getElementById('exp-ville');
         const selectDest = document.getElementById('dest-ville');
-        
         selectExp.innerHTML = '<option value="">Ville de départ...</option>';
         selectDest.innerHTML = '<option value="">Ville de destination...</option>';
-        
         if (villes.length === 0) {
             const opt = document.createElement('option');
             opt.innerText = "Aucune ville configurée";
@@ -406,7 +424,6 @@
             selectDest.appendChild(opt);
             return;
         }
-
         villes.forEach(v => {
             let opt1 = document.createElement('option'); opt1.value = v; opt1.innerText = v;
             selectExp.appendChild(opt1);
@@ -415,15 +432,14 @@
         });
     }
 
-    // --- Logique Métier ---
     const form = document.getElementById('reception-form');
     form.addEventListener('submit', async (e) => {
         e.preventDefault();
-        
-        const codeRetrait = Math.random().toString(36).substring(2, 8).toUpperCase();
-        const codeEtiquette = "T" + Date.now().toString().slice(-4) + Math.floor(Math.random() * 100).toString().padStart(2, '0');
+        // Modification : Le code confidentiel commence par BT
+        const codeRetrait = "BT" + Math.random().toString(36).substring(2, 6).toUpperCase();
+        // Modification : Le code étiquette commence par BT
+        const codeEtiquette = "BT" + Date.now().toString().slice(-4) + Math.floor(Math.random() * 10).toString();
         const nbEmballages = document.getElementById('nb-emballage').value;
-        
         const nouveauColis = {
             id: "BT-" + Date.now().toString().slice(-6),
             date: new Date().toLocaleDateString('fr-FR'),
@@ -443,18 +459,19 @@
             code: codeRetrait,
             etiquette: codeEtiquette,
             statut: "En attente",
+            notified: false,
             timestamp: Date.now()
         };
-
         try {
             const newColisRef = push(dbRef);
             await set(newColisRef, nouveauColis);
-            
             currentCode = codeRetrait;
             currentColis = nouveauColis;
-            
+            currentColisFirebaseKey = newColisRef.key;
             showSuccess(codeRetrait, codeEtiquette, nbEmballages);
             form.reset();
+            document.getElementById('exp-tel').value = "+229 01";
+            document.getElementById('dest-tel').value = "+229 01";
         } catch (err) {
             alert("Erreur de synchronisation cloud.");
         }
@@ -463,19 +480,15 @@
     window.renderAll = () => {
         const container = document.getElementById('liste-reception');
         const searchVal = document.getElementById('filter-dest').value.toLowerCase();
-        
         if (db_colis.length === 0) {
-            container.innerHTML = `<p class="text-center small text-secondary py-3">Aucun colis enregistré.</p>`;
+            container.innerHTML = `<p class="text-center small text-secondary py-3">Aucun Colis enregistré.</p>`;
             return;
         }
-
         const filtered = db_colis.filter(c => c.dest.nom.toLowerCase().includes(searchVal));
-
         if (filtered.length === 0) {
             container.innerHTML = `<p class="text-center small text-secondary py-3">Aucun résultat pour "${searchVal}"</p>`;
             return;
         }
-
         container.innerHTML = filtered.map((c) => {
             const isLivre = c.statut === "Livré";
             return `
@@ -485,7 +498,8 @@
                         <span class="colis-id">${c.id}</span> 
                         <span class="badge bg-primary ms-1" style="font-size:0.6rem">🏷️ ${c.etiquette}</span>
                         <span class="badge-status ${isLivre ? 'bg-livre' : 'bg-attente'} ms-1">${c.statut}</span>
-                        <div class="small fw-bold mt-1">${c.dest.nom} (${c.nb} pces)</div>
+                        ${c.notified ? '<span class="badge-notify ms-1">🔔 Notifié</span>' : ''}
+                        <div class="small fw-bold mt-1">${c.dest.nom} (${c.nb} Colis)</div>
                         <div class="small text-info italic" style="font-size:0.75rem">${c.desc || 'Sans description'}</div>
                         <div class="small text-secondary" style="font-size:0.65rem">${c.date}</div>
                     </div>
@@ -506,6 +520,7 @@
         if (colis) {
             currentColis = colis;
             currentCode = colis.code;
+            currentColisFirebaseKey = colis.firebaseKey;
             showSuccess(colis.code, colis.etiquette, colis.nb);
         }
     };
@@ -513,18 +528,10 @@
     window.deleteColisCloud = async (id) => {
         const profile = JSON.parse(localStorage.getItem('bt_profile') || '{"code":"1234"}');
         const entry = prompt("Code ADMIN pour supprimer :");
-        
         if (entry === profile.code) {
-            const snapshot = await get(dbRef);
-            const data = snapshot.val();
-            let keyToDelete = null;
-            
-            for (let key in data) {
-                if (data[key].id === id) { keyToDelete = key; break; }
-            }
-
-            if (keyToDelete) {
-                await remove(ref(db, `colis/${keyToDelete}`));
+            const colisToDelete = db_colis.find(c => c.id === id);
+            if (colisToDelete && colisToDelete.firebaseKey) {
+                await remove(ref(db, `colis/${colisToDelete.firebaseKey}`));
                 const tempOverlay = document.getElementById('temp-success-overlay');
                 tempOverlay.style.display = 'flex';
                 setTimeout(() => { tempOverlay.style.display = 'none'; }, 1500);
@@ -550,16 +557,38 @@
         });
     };
 
+    function generateMessage(isSms = false) {
+        const profile = JSON.parse(localStorage.getItem('bt_profile') || '{"name":"Barthélémy AMOUSSOU", "tel":"01 97 74 40 35"}');
+        const header = isSms ? "BARTHÉLÉMY TRANSPORT - SERVICE COLIS" : "*BARTHÉLÉMY TRANSPORT - SERVICE COLIS*";
+        const b = (txt) => isSms ? txt : `*${txt}*`;
+        const desc = currentColis.desc ? `\n📦 ${b('Description:')} ${currentColis.desc}` : "";
+
+        return `📦 ${header}\n\n` +
+               `Bonjour ${b(currentColis.dest.nom)},\n` +
+               `Votre Colis (${currentColis.nb} Colis) est en route de ${currentColis.exp.ville} vers ${currentColis.dest.ville}.${desc}\n\n` +
+               `🏷️ Étiquette: ${b(currentColis.etiquette)}\n` +
+               `🔐 CODE RETRAIT: ${b(currentColis.code)}\n\n` +
+               `⚠️ ${b('IMPORTANT:')} Le colis ne pourra être retiré QUE sur présentation de ce code confidentiel.\n\n` +
+               `PDG: ${profile.name}\n` +
+               `Tél: ${profile.tel}`;
+    }
+
+    async function markAsNotified() {
+        if (currentColisFirebaseKey) {
+            await update(ref(db, `colis/${currentColisFirebaseKey}`), { notified: true });
+        }
+    }
+
     window.shareWhatsApp = () => {
         if (!currentColis) return;
-        const message = `📦 *BARTHÉLÉMY TRANSPORT*\n\n` +
-                        `Bonjour *${currentColis.dest.nom}*,\n` +
-                        `Un envoi de *${currentColis.nb} emballage(s)* vous a été expédié de *${currentColis.exp.ville}*.\n\n` +
-                        `🏷️ *ÉTIQUETTE:* ${currentColis.etiquette}\n` +
-                        `🔹 *Destination:* ${currentColis.dest.ville}\n` +
-                        `🔐 *CODE DE RETRAIT:* ${currentColis.code}\n\n` +
-                        `Merci de présenter ce code pour le retrait.`;
-        window.open(`https://wa.me/${currentColis.dest.tel}?text=${encodeURIComponent(message)}`, '_blank');
+        markAsNotified();
+        window.open(`https://wa.me/${currentColis.dest.tel.replace(/\s+/g, '')}?text=${encodeURIComponent(generateMessage(false))}`, '_blank');
+    };
+
+    window.shareSMS = () => {
+        if (!currentColis) return;
+        markAsNotified();
+        window.open(`sms:${currentColis.dest.tel.replace(/\s+/g, '')}?body=${encodeURIComponent(generateMessage(true))}`, '_blank');
     };
 
     document.addEventListener('click', (e) => {

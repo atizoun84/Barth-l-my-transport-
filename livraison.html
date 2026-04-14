@@ -217,12 +217,17 @@
     <div class="container py-4">
         <div class="text-center mb-4">
             <h2 class="fw-bold">Validation Livraison 📤</h2>
-            <p class="small text-light">Recherchez par destination et validez le retrait</p>
+            <p class="small text-light">Recherchez par code confidentiel ou destination</p>
         </div>
 
         <div class="search-section shadow mb-3">
             <div class="mb-3">
-                <label class="form-label small">FILTRER PAR DESTINATION / VILLE</label>
+                <label class="form-label small">RECHERCHE RAPIDE (CODE CONFIDENTIEL)</label>
+                <input type="text" id="search-code-direct" class="form-control form-control-custom fw-bold" 
+                       placeholder="BT..." value="BT" oninput="rechercheDynamiqueCode(this)">
+            </div>
+            <div class="mb-3">
+                <label class="form-label small">OU FILTRER PAR DESTINATION / VILLE</label>
                 <select id="search-ville" class="form-select form-control-custom" onchange="filtrerParVille()">
                     <option value="">Sélectionner une ville...</option>
                 </select>
@@ -323,7 +328,6 @@
     import { initializeApp } from "https://www.gstatic.com/firebasejs/12.11.0/firebase-app.js";
     import { getDatabase, ref, set, onValue, get, update } from "https://www.gstatic.com/firebasejs/12.11.0/firebase-database.js";
 
-    // NOUVELLE CONFIGURATION FIREBASE MISE À JOUR
     const firebaseConfig = {
         apiKey: "AIzaSyDApQiUgWbjcktwRfv2KukUgGKyoF3bABs",
         authDomain: "barthelemy-transport-bea5d.firebaseapp.com",
@@ -339,12 +343,13 @@
 
     window.firebaseDB = db;
     window.db_colis = [];
+    window.db_colis_map = {};
     window.activeColis = null;
     window.nomOperateurActif = ""; 
     let tentatives = parseInt(localStorage.getItem('bt_tentatives') || '0');
     const MAX_TENTATIVES = 3;
 
-    // Toast Status Logic
+    // Status Logic
     const statusToast = document.getElementById('status-toast');
     const updateOnlineStatus = () => {
         if (navigator.onLine) {
@@ -359,7 +364,7 @@
     window.addEventListener('offline', updateOnlineStatus);
     updateOnlineStatus();
 
-    // Data Synchronization
+    // Data Sync
     function loadAppData() {
         const colisRef = ref(db, 'colis');
         const localitesRef = ref(db, 'bt_localites');
@@ -372,6 +377,9 @@
             window.db_colis = data ? Object.values(data) : [];
             localStorage.setItem('bt_colis_data', JSON.stringify(window.db_colis));
             loadVilles();
+            // Re-trigger search if input has value
+            const currentSearch = document.getElementById('search-code-direct');
+            if(currentSearch.value.length > 2) rechercheDynamiqueCode(currentSearch);
         });
 
         onValue(localitesRef, (snapshot) => {
@@ -392,6 +400,31 @@
             updateOperatorList();
         });
     }
+
+    // MODIFICATION : Recherche dynamique réactive
+    window.rechercheDynamiqueCode = (el) => {
+        let val = el.value.toUpperCase();
+        if (!val.startsWith("BT")) {
+            el.value = "BT";
+            return;
+        }
+        
+        // Recherche instantanée dans la base locale (synchronisée Cloud)
+        const trouvé = window.db_colis.find(c => c.code === val && c.statut !== "Livré");
+        
+        if (trouvé) {
+            window.chargerColis(trouvé.id);
+            document.getElementById('suggestions-container').innerHTML = "";
+            el.classList.add('is-valid');
+            el.classList.remove('is-invalid');
+        } else {
+            // Si pas trouvé mais longueur suffisante, on cache le résultat
+            if(val.length >= 6) {
+                document.getElementById('resultat-container').style.display = 'none';
+                el.classList.add('is-invalid');
+            }
+        }
+    };
 
     function updateOperatorList() {
         const opSelect = document.getElementById('op-select');
@@ -419,7 +452,7 @@
 
     window.loadVilles = () => {
         const select = document.getElementById('search-ville');
-        const localites = JSON.parse(localStorage.getItem('bt_localites') || '["Parakou", "Glazoué"]');
+        const localites = JSON.parse(localStorage.getItem('bt_localites') || '[]');
         const currentVal = select.value;
         
         select.innerHTML = '<option value="">Sélectionner une ville...</option>';
@@ -467,6 +500,8 @@
         
         document.getElementById('resultat-container').style.display = 'block';
         document.getElementById('suggestions-container').innerHTML = "";
+        
+        document.getElementById('final-delivery-code').value = ""; // Vider pour sécurité
     };
 
     window.validerLivraison = () => {
@@ -504,8 +539,8 @@
 
         if (clientCode === window.activeColis.code) {
             window.nomOperateurActif = nomOperateur;
-            document.getElementById('info-nb-colis').innerText = window.activeColis.nombre_colis || "1";
-            document.getElementById('info-marquage').innerText = window.activeColis.id;
+            document.getElementById('info-nb-colis').innerText = window.activeColis.nb || "1";
+            document.getElementById('info-marquage').innerText = window.activeColis.etiquette || window.activeColis.id;
             document.getElementById('delivery-info-overlay').style.display = 'flex';
         } else {
             tentatives++;
@@ -581,7 +616,7 @@
     document.addEventListener('click', (e) => {
         const sidebar = document.getElementById('sidebar');
         const burger = document.querySelector('.burger-icon');
-        if (sidebar.classList.contains('active') && !sidebar.contains(e.target) && !burger.contains(e.target)) {
+        if (sidebar && sidebar.classList.contains('active') && !sidebar.contains(e.target) && !burger.contains(e.target)) {
             sidebar.classList.remove('active');
         }
     });
