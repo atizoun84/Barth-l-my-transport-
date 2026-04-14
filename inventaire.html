@@ -156,15 +156,30 @@
 
         .colis-meta { font-size: 0.75rem; color: rgba(255,255,255,0.5); }
         .colis-title { font-weight: 700; color: var(--gozem-green); }
+        
         .status-pill {
             font-size: 0.65rem;
             padding: 3px 8px;
             border-radius: 20px;
             text-transform: uppercase;
             font-weight: bold;
+            margin-left: 5px;
         }
         .status-pending { background: rgba(255, 193, 7, 0.2); color: #ffc107; }
         .status-delivered { background: rgba(0, 209, 139, 0.2); color: var(--gozem-green); }
+        
+        /* Nouveau : Style Badge Paiement */
+        .pay-pill {
+            font-size: 0.6rem;
+            padding: 2px 6px;
+            border-radius: 4px;
+            text-transform: uppercase;
+            font-weight: bold;
+            display: inline-block;
+            margin-top: 5px;
+        }
+        .pay-ok { background: rgba(0, 209, 139, 0.15); color: #00D18B; border: 1px solid rgba(0, 209, 139, 0.3); }
+        .pay-wait { background: rgba(255, 193, 7, 0.15); color: #ffc107; border: 1px solid rgba(255, 193, 7, 0.3); }
 
         .btn-action {
             background: rgba(255,255,255,0.1);
@@ -340,8 +355,8 @@
 
 <div id="delete-overlay">
     <div class="text-center text-white">
-        <h2 class="fw-bold">COLIS SUPPRIMÉ</h2>
-        <p>Mise à jour de l'inventaire en cours...</p>
+        <h2 class="fw-bold">SUPPRESSION EFFECTUÉE</h2>
+        <p>Mise à jour en cours...</p>
     </div>
 </div>
 
@@ -465,7 +480,6 @@
         document.getElementById('finance-attente').innerText = totalAttente.toLocaleString() + " F";
     };
 
-    // CORRECTION : Gestion optimisée du retrait et du succès
     window.validerRetrait = function() {
         const montant = parseFloat(document.getElementById('retrait-montant').value);
         const motif = document.getElementById('retrait-motif').value;
@@ -498,24 +512,20 @@
             motif: motif
         };
 
-        // Pousse vers Firebase (Note: Assure-toi que les règles Firebase autorisent le dossier 'retraits')
         const newRetraitRef = push(ref(db, 'retraits'));
         set(newRetraitRef, nouveauRetrait).then(() => {
-            // Fermeture modale
             const modalEl = document.getElementById('modalRetrait');
             const modalInstance = bootstrap.Modal.getInstance(modalEl);
             if (modalInstance) modalInstance.hide();
             
-            // Reset champs
             document.getElementById('retrait-montant').value = "";
             document.getElementById('retrait-motif').value = "";
             document.getElementById('retrait-admin-code').value = "";
             
-            // Message de succès bref et clair
             alert("✅ Retrait effectué avec succès !");
         }).catch(err => {
             console.error(err);
-            alert("❌ Erreur d'accès Cloud. Vérifiez les règles de sécurité Firebase ou votre connexion.");
+            alert("❌ Erreur d'accès Cloud.");
         });
     };
 
@@ -526,16 +536,43 @@
             return;
         }
         container.innerHTML = window.db_retraits.map(r => `
-            <div class="history-item d-flex justify-content-between">
+            <div class="history-item d-flex justify-content-between align-items-center">
                 <div>
                     <span class="text-white-50">${r.date}</span><br>
                     <b class="text-info">${r.motif}</b>
                 </div>
-                <div class="text-end">
-                    <b class="text-danger">-${r.montant} F</b>
+                <div class="text-end d-flex align-items-center">
+                    <b class="text-danger me-2">-${r.montant} F</b>
+                    <button class="btn btn-sm btn-outline-danger border-0 p-1" onclick="deleteRetraitSecure('${r.id}')">🗑️</button>
                 </div>
             </div>
         `).join('');
+    };
+
+    window.deleteRetraitSecure = function(id) {
+        const profile = JSON.parse(localStorage.getItem('bt_profile') || '{"code":"1234"}');
+        const entry = prompt("Saisissez le code ADMIN pour supprimer ce retrait de l'historique :");
+
+        if (entry === profile.code) {
+            const retraitsRef = ref(db, 'retraits');
+            onValue(retraitsRef, (snapshot) => {
+                const data = snapshot.val();
+                for (let key in data) {
+                    if (data[key].id === id) {
+                        set(ref(db, `retraits/${key}`), null);
+                        break;
+                    }
+                }
+            }, { onlyOnce: true });
+
+            const overlay = document.getElementById('delete-overlay');
+            overlay.style.display = 'flex';
+            setTimeout(() => {
+                overlay.style.display = 'none';
+            }, 1200);
+        } else if (entry !== null) {
+            alert("⚠️ Code incorrect.");
+        }
     };
 
     window.renderAll = function() {
@@ -559,12 +596,22 @@
             return;
         }
 
-        container.innerHTML = filtered.map(c => `
+        container.innerHTML = filtered.map(c => {
+            // Déduction du badge de paiement
+            let payBadge = "";
+            if(c.pay_status === "Payé à la livraison" || c.pay_status === "Payé par expéditeur") {
+                payBadge = `<span class="pay-pill pay-ok">✓ ${c.pay_status}</span>`;
+            } else {
+                payBadge = `<span class="pay-pill pay-wait">⚠ ${c.pay_status || "Paiement en attente"}</span>`;
+            }
+
+            return `
             <div class="inventory-card">
                 <div class="d-flex justify-content-between align-items-start mb-2">
                     <div>
                         <span class="colis-meta">${c.date} • ID: ${c.id}</span>
-                        <div class="colis-title">🏷️ ${c.etiquette} ${c.statut === 'Livré' ? '<span class="small opacity-50 text-white fw-normal">| Opérateur : ' + (c.operateur_nom || 'N/A') + '</span>' : ''}</div>
+                        <div class="colis-title">🏷️ ${c.etiquette} ${c.statut === 'Livré' ? '<span class="small opacity-50 text-white fw-normal">| Op : ' + (c.operateur_nom || 'N/A') + '</span>' : ''}</div>
+                        ${payBadge}
                     </div>
                     <span class="status-pill ${c.statut === 'Livré' ? 'status-delivered' : 'status-pending'}">
                         ${c.statut}
@@ -585,7 +632,7 @@
                     </div>
                 </div>
             </div>
-        `).join('');
+        `}).join('');
     };
 
     window.deleteColisSecure = function(id) {

@@ -204,6 +204,18 @@
         .bg-livre { background: var(--gozem-green); color: var(--gozem-dark); }
         .bg-attente { background: #f1c40f; color: #000; }
         .badge-notify { font-size: 0.55rem; padding: 2px 5px; border-radius: 3px; background: rgba(255,255,255,0.1); color: #aaa; border: 1px solid rgba(255,255,255,0.2); }
+        
+        /* Nouveau Style Checkbox */
+        .payment-status-container {
+            display: flex;
+            gap: 15px;
+            margin-top: 8px;
+            padding: 10px;
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 8px;
+        }
+        .form-check-label { font-size: 0.8rem; cursor: pointer; }
+        .form-check-input:checked { background-color: var(--gozem-green); border-color: var(--gozem-green); }
     </style>
 </head>
 <body>
@@ -280,6 +292,16 @@
                     <div class="col-12">
                         <label class="form-label small">Frais de transport (FCFA)</label>
                         <input type="number" id="colis-prix" class="form-control form-control-custom" placeholder="Ex: 2000" required>
+                        <div class="payment-status-container">
+                            <div class="form-check">
+                                <input class="form-check-input" type="radio" name="pay-status" id="pay-exp" value="Payé par expéditeur" checked>
+                                <label class="form-check-label" for="pay-exp">Payé par expéditeur</label>
+                            </div>
+                            <div class="form-check">
+                                <input class="form-check-input" type="radio" name="pay-status" id="pay-non" value="Non payé par expéditeur">
+                                <label class="form-check-label" for="pay-non">Non payé (À la livraison)</label>
+                            </div>
+                        </div>
                     </div>
                     <div class="col-12 mt-4">
                         <button type="submit" class="btn-save shadow">Enregistrer le Colis</button>
@@ -435,11 +457,11 @@
     const form = document.getElementById('reception-form');
     form.addEventListener('submit', async (e) => {
         e.preventDefault();
-        // Modification : Le code confidentiel commence par BT
         const codeRetrait = "BT" + Math.random().toString(36).substring(2, 6).toUpperCase();
-        // Modification : Le code étiquette commence par BT
         const codeEtiquette = "BT" + Date.now().toString().slice(-4) + Math.floor(Math.random() * 10).toString();
         const nbEmballages = document.getElementById('nb-emballage').value;
+        const payStatus = document.querySelector('input[name="pay-status"]:checked').value;
+
         const nouveauColis = {
             id: "BT-" + Date.now().toString().slice(-6),
             date: new Date().toLocaleDateString('fr-FR'),
@@ -455,6 +477,7 @@
             },
             desc: document.getElementById('colis-desc').value,
             prix: document.getElementById('colis-prix').value,
+            pay_status: payStatus,
             nb: nbEmballages,
             code: codeRetrait,
             etiquette: codeEtiquette,
@@ -491,6 +514,7 @@
         }
         container.innerHTML = filtered.map((c) => {
             const isLivre = c.statut === "Livré";
+            const payText = c.pay_status || "Payé par expéditeur";
             return `
             <div class="colis-item" id="item-${c.id}" style="${isLivre ? 'opacity: 0.7;' : ''}">
                 <div class="d-flex justify-content-between align-items-start">
@@ -501,7 +525,7 @@
                         ${c.notified ? '<span class="badge-notify ms-1">🔔 Notifié</span>' : ''}
                         <div class="small fw-bold mt-1">${c.dest.nom} (${c.nb} Colis)</div>
                         <div class="small text-info italic" style="font-size:0.75rem">${c.desc || 'Sans description'}</div>
-                        <div class="small text-secondary" style="font-size:0.65rem">${c.date}</div>
+                        <div class="small text-secondary" style="font-size:0.65rem">${c.date} • <span class="text-light">${payText}</span></div>
                     </div>
                     <div class="text-end">
                         <span class="badge-dest">${c.dest.ville}</span>
@@ -562,10 +586,13 @@
         const header = isSms ? "BARTHÉLÉMY TRANSPORT - SERVICE COLIS" : "*BARTHÉLÉMY TRANSPORT - SERVICE COLIS*";
         const b = (txt) => isSms ? txt : `*${txt}*`;
         const desc = currentColis.desc ? `\n📦 ${b('Description:')} ${currentColis.desc}` : "";
+        const payMsg = currentColis.pay_status === "Payé par expéditeur" ? "Frais payés." : "Frais à payer à la livraison.";
 
         return `📦 ${header}\n\n` +
                `Bonjour ${b(currentColis.dest.nom)},\n` +
-               `Votre Colis (${currentColis.nb} Colis) est en route de ${currentColis.exp.ville} vers ${currentColis.dest.ville}.${desc}\n\n` +
+               `Votre Colis (${currentColis.nb} Colis) est en route de ${currentColis.exp.ville} vers ${currentColis.dest.ville}.${desc}\n` +
+               `💰 ${b('Frais:')} ${currentColis.prix} FCFA\n` +
+               `💳 ${b('Paiement:')} ${payMsg}\n\n` +
                `🏷️ Étiquette: ${b(currentColis.etiquette)}\n` +
                `🔐 CODE RETRAIT: ${b(currentColis.code)}\n\n` +
                `⚠️ ${b('IMPORTANT:')} Le colis ne pourra être retiré QUE sur présentation de ce code confidentiel.\n\n` +

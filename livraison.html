@@ -167,6 +167,16 @@
             cursor: pointer;
         }
 
+        /* --- Payment Toggle UI --- */
+        .payment-box {
+            background: rgba(255, 193, 7, 0.1);
+            border: 1px solid #ffc107;
+            border-radius: 10px;
+            padding: 12px;
+            margin: 15px 0;
+            display: none; /* Caché par défaut */
+        }
+
         /* --- Overlays --- */
         #delivery-success, #delivery-info-overlay {
             display: none;
@@ -258,9 +268,24 @@
                     <div class="info-label">Description du colis</div>
                     <div id="res-desc" class="info-value" style="font-size: 0.95rem;">-</div>
                 </div>
+                
                 <div class="col-12">
-                    <div class="info-label">Montant à percevoir</div>
+                    <div class="info-label">Montant du transport</div>
                     <div id="res-prix" class="info-value text-warning fs-3">- FCFA</div>
+                    
+                    <div id="payment-needed-box" class="payment-box">
+                        <div class="form-check">
+                            <input class="form-check-input" type="checkbox" id="confirm-payment-checkbox">
+                            <label class="form-check-label fw-bold text-warning" for="confirm-payment-checkbox">
+                                Confirmer la réception du paiement par le client
+                            </label>
+                        </div>
+                        <small class="text-white-50">Ce colis n'a pas été payé au départ.</small>
+                    </div>
+
+                    <div id="payment-done-msg" class="text-success small fw-bold" style="display:none">
+                        ✓ Frais déjà réglés par l'expéditeur.
+                    </div>
                 </div>
 
                 <hr class="border-secondary">
@@ -377,7 +402,6 @@
             window.db_colis = data ? Object.values(data) : [];
             localStorage.setItem('bt_colis_data', JSON.stringify(window.db_colis));
             loadVilles();
-            // Re-trigger search if input has value
             const currentSearch = document.getElementById('search-code-direct');
             if(currentSearch.value.length > 2) rechercheDynamiqueCode(currentSearch);
         });
@@ -401,24 +425,19 @@
         });
     }
 
-    // MODIFICATION : Recherche dynamique réactive
     window.rechercheDynamiqueCode = (el) => {
         let val = el.value.toUpperCase();
         if (!val.startsWith("BT")) {
             el.value = "BT";
             return;
         }
-        
-        // Recherche instantanée dans la base locale (synchronisée Cloud)
         const trouvé = window.db_colis.find(c => c.code === val && c.statut !== "Livré");
-        
         if (trouvé) {
             window.chargerColis(trouvé.id);
             document.getElementById('suggestions-container').innerHTML = "";
             el.classList.add('is-valid');
             el.classList.remove('is-invalid');
         } else {
-            // Si pas trouvé mais longueur suffisante, on cache le résultat
             if(val.length >= 6) {
                 document.getElementById('resultat-container').style.display = 'none';
                 el.classList.add('is-invalid');
@@ -430,14 +449,11 @@
         const opSelect = document.getElementById('op-select');
         const profile = JSON.parse(localStorage.getItem('bt_profile') || '{"name":"Chauffeur"}');
         const collabos = JSON.parse(localStorage.getItem('bt_collabos') || '[]');
-        
         opSelect.innerHTML = '<option value="">-- Qui effectue la livraison ? --</option>';
-        
         let optAdmin = document.createElement('option');
         optAdmin.value = "ADMIN_SECURE"; 
         optAdmin.innerText = `${profile.name} (Admin)`;
         opSelect.appendChild(optAdmin);
-
         collabos.forEach((c, index) => {
             let opt = document.createElement('option');
             opt.value = index; 
@@ -454,7 +470,6 @@
         const select = document.getElementById('search-ville');
         const localites = JSON.parse(localStorage.getItem('bt_localites') || '[]');
         const currentVal = select.value;
-        
         select.innerHTML = '<option value="">Sélectionner une ville...</option>';
         localites.forEach(v => {
             const count = window.db_colis.filter(c => c.dest && c.dest.ville === v && c.statut !== "Livré").length;
@@ -471,13 +486,11 @@
         const container = document.getElementById('suggestions-container');
         container.innerHTML = "";
         if (!ville) return;
-
         const filtered = window.db_colis.filter(c => c.dest && c.dest.ville === ville && c.statut !== "Livré");
         if (filtered.length === 0) {
             container.innerHTML = "<p class='small text-center py-2'>Aucun colis en attente.</p>";
             return;
         }
-
         filtered.forEach(c => {
             const div = document.createElement('div');
             div.className = "colis-suggestion";
@@ -498,19 +511,42 @@
         document.getElementById('res-desc').innerText = window.activeColis.desc || "Aucune description";
         document.getElementById('res-prix').innerText = window.activeColis.prix + " FCFA";
         
+        // Gestion de l'affichage du statut de paiement
+        const isPaid = window.activeColis.pay_status === "Payé par expéditeur";
+        const paymentBox = document.getElementById('payment-needed-box');
+        const paymentMsg = document.getElementById('payment-done-msg');
+        const checkbox = document.getElementById('confirm-payment-checkbox');
+
+        if (isPaid) {
+            paymentBox.style.display = 'none';
+            paymentMsg.style.display = 'block';
+            checkbox.checked = true; // Par défaut car déjà payé
+        } else {
+            paymentBox.style.display = 'block';
+            paymentMsg.style.display = 'none';
+            checkbox.checked = false; // Doit être coché par l'agent
+        }
+
         document.getElementById('resultat-container').style.display = 'block';
         document.getElementById('suggestions-container').innerHTML = "";
-        
-        document.getElementById('final-delivery-code').value = ""; // Vider pour sécurité
+        document.getElementById('final-delivery-code').value = ""; 
     };
 
     window.validerLivraison = () => {
         if (localStorage.getItem('bt_locked') === 'true') return;
         if (!window.activeColis) return;
 
+        // Vérification du paiement si non payé au départ
+        const isPaid = window.activeColis.pay_status === "Payé par expéditeur";
+        const checkbox = document.getElementById('confirm-payment-checkbox');
+        
+        if (!isPaid && !checkbox.checked) {
+            alert("ERREUR : Vous devez confirmer la réception du paiement avant de livrer !");
+            return;
+        }
+
         const profile = JSON.parse(localStorage.getItem('bt_profile') || '{"code":"1234"}');
         const collabos = JSON.parse(localStorage.getItem('bt_collabos') || '[]');
-        
         const opIndex = document.getElementById('op-select').value;
         const opCode = document.getElementById('op-code').value;
         const clientCode = document.getElementById('final-delivery-code').value.trim().toUpperCase();
@@ -522,7 +558,6 @@
 
         let codeAttendu = "";
         let nomOperateur = "";
-
         if (opIndex === "ADMIN_SECURE") {
             codeAttendu = profile.code;
             nomOperateur = profile.name + " (Admin)";
@@ -569,11 +604,11 @@
                     break;
                 }
             }
-
             if(!firebaseKey) throw new Error("Référence colis introuvable");
 
             const updateData = {
                 statut: "Livré",
+                pay_status: "Payé par destinataire (Livré)", // On met à jour le statut de paiement final
                 receptionnaire: document.getElementById('res-dest-nom').value,
                 date_livraison: new Date().toLocaleString('fr-FR'),
                 operateur_nom: nomOperateur,
@@ -581,7 +616,6 @@
             };
 
             await update(ref(db, 'colis/' + firebaseKey), updateData);
-            
             document.getElementById('delivery-success').style.display = 'flex';
             if ("vibrate" in navigator) navigator.vibrate(200);
         } catch (err) {
